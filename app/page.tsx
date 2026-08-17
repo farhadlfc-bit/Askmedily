@@ -1,5 +1,5 @@
 'use client';
-
+import { useState } from 'react';
 import { Search, Pill, Brain, Shield, ChevronRight, CheckCircle } from 'lucide-react';
 
 
