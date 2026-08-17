@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
               description: plan === 'basic'
                 ? 'Drug search, plain English explanations, side effects ranked by frequency'
                 : 'Everything in Basic + AI Condition Agent + personalised medication history',
+              tax_code: 'txcd_10103001',
             },
             unit_amount: prices[plan as keyof typeof prices],
             recurring: { interval: 'month' },
