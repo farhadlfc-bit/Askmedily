@@ -1,21 +1,7 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase';
 import { Brain, Send, ArrowLeft, Pill, Loader2, ChevronRight, AlertCircle, Heart, Activity, Stethoscope } from 'lucide-react';
-
-interface ConditionInfo {
-  name: string;
-  category: string;
-  description: string;
-  symptoms: string[];
-  causes: string[];
-  commonly_prescribed_drugs: string[];
-  drug_slugs: string[];
-  lifestyle_tips: string[];
-  when_to_see_gp: string;
-  source: string;
-}
 
 interface Message {
   role: 'agent' | 'user';
@@ -23,36 +9,15 @@ interface Message {
   drugLinks?: { name: string; url: string }[];
 }
 
-const categoryColors: Record<string, string> = {
-  'Cardiovascular': '#FF6B6B',
-  'Respiratory': '#4ECDC4',
-  'Mental Health': '#9B59B6',
-  'Diabetes': '#F39C12',
-  'Musculoskeletal': '#27AE60',
-  'Neurological': '#3498DB',
-  'Gastrointestinal': '#E67E22',
-  'Dermatological': '#1ABC9C',
-  'Endocrine': '#E74C3C',
-  'Urological': '#2980B9',
-};
-
 function ConditionPageContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
-  useEffect(() => {
-  const checkAuth = async () => {
-    const supabase = createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      window.location.href = '/login';
-    }
-  };
-  checkAuth();
-}, []);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [agentLoading, setAgentLoading] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<{ role: string; content: string }[]>([]);
+  const [conditionInfo, setConditionInfo] = useState<any>(null);
+  const [loadingInfo, setLoadingInfo] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'agent'>('overview');
 
   useEffect(() => {
@@ -72,7 +37,9 @@ function ConditionPageContent() {
       });
       const data = await res.json();
       if (!data.error) setConditionInfo(data);
-    } catch {}
+    } catch (e) {
+      console.error('Failed to load condition info', e);
+    }
     setLoadingInfo(false);
   };
 
@@ -81,7 +48,7 @@ function ConditionPageContent() {
     const systemPrompt = `You are MedilyAgent, a friendly UK pharmacy expert. The user has been diagnosed with or is asking about: ${condition}.
 
 Ask ONE question at a time to personalise their medication information:
-1. Which country are they in? (affects prescribing guidelines)
+1. Which country are they in?
 2. Have they been prescribed anything yet by their GP?
 3. How long have they had this condition?
 4. Any allergies to medications?
@@ -98,7 +65,7 @@ Rules:
 - Be warm and reassuring`;
 
     const history = [{ role: 'user', content: `I want to understand more about: ${condition}` }];
-    
+
     try {
       const res = await fetch('/api/agent', {
         method: 'POST',
@@ -106,7 +73,7 @@ Rules:
         body: JSON.stringify({ messages: history, systemPrompt })
       });
       const data = await res.json();
-      let content = data.response;
+      let content = data.response || '';
       let drugLinks: { name: string; url: string }[] | undefined;
       const jsonMatch = content.match(/\{"drugLinks":[^}]+\}/s);
       if (jsonMatch) {
@@ -116,7 +83,7 @@ Rules:
       setMessages([{ role: 'agent', content, drugLinks }]);
       setConversationHistory([...history, { role: 'assistant', content: data.response }]);
     } catch {
-      setMessages([{ role: 'agent', content: "Hello! I'm here to help you understand your medication options. Could you tell me which country you're in?" }]);
+      setMessages([{ role: 'agent', content: "Hello! I'm here to help you understand your medication options. Which country are you in?" }]);
     }
     setAgentLoading(false);
   };
@@ -136,7 +103,7 @@ Rules:
         body: JSON.stringify({ messages: newHistory })
       });
       const data = await res.json();
-      let content = data.response;
+      let content = data.response || '';
       let drugLinks: { name: string; url: string }[] | undefined;
       const jsonMatch = content.match(/\{"drugLinks":[^}]+\}/s);
       if (jsonMatch) {
@@ -151,31 +118,29 @@ Rules:
     setAgentLoading(false);
   };
 
-  const categoryColor = conditionInfo ? (categoryColors[conditionInfo.category] || 'var(--brand)') : 'var(--brand)';
-
   return (
     <div style={{ maxWidth: 760, margin: '0 auto', padding: '24px', minHeight: '100vh' }}>
-      <a href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--muted)', textDecoration: 'none', fontSize: 14, marginBottom: 20 }}>
-        <ArrowLeft size={16} /> Back to search
+      <a href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--muted)', textDecoration: 'none', fontSize: 14, marginBottom: 20 }}>
+        <ArrowLeft size={16} /> Back to dashboard
       </a>
 
       {/* Header */}
       <div style={{ background: 'white', borderRadius: 16, padding: 24, marginBottom: 16, border: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-          <div style={{ width: 52, height: 52, background: `${categoryColor}20`, borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Stethoscope size={24} color={categoryColor} />
+          <div style={{ width: 52, height: 52, background: 'var(--brand-light)', borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Stethoscope size={24} color="var(--brand)" />
           </div>
           <div style={{ flex: 1 }}>
-            <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 4 }}>{query}</h1>
-            {conditionInfo && (
-              <div style={{ display: 'inline-block', background: `${categoryColor}20`, color: categoryColor, padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>
+            <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 4 }}>{query || 'Condition Search'}</h1>
+            {conditionInfo?.category && (
+              <div style={{ display: 'inline-block', background: 'var(--brand-light)', color: 'var(--brand)', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>
                 {conditionInfo.category}
               </div>
             )}
           </div>
         </div>
-        {conditionInfo && (
-          <p style={{ marginTop: 16, fontSize: 15, lineHeight: 1.7, color: 'var(--foreground)', padding: '14px', background: 'var(--background)', borderRadius: 10 }}>
+        {conditionInfo?.description && (
+          <p style={{ marginTop: 16, fontSize: 15, lineHeight: 1.7, padding: '14px', background: 'var(--background)', borderRadius: 10 }}>
             {conditionInfo.description}
           </p>
         )}
@@ -208,49 +173,46 @@ Rules:
             </div>
           ) : conditionInfo ? (
             <>
-              {/* Symptoms */}
-              <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
-                <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Activity size={18} color="var(--brand)" /> Common symptoms
-                </h2>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {conditionInfo.symptoms.map((s, i) => (
-                    <span key={i} style={{ background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 20, padding: '6px 14px', fontSize: 13 }}>{s}</span>
-                  ))}
+              {conditionInfo.symptoms?.length > 0 && (
+                <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
+                  <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Activity size={18} color="var(--brand)" /> Common symptoms
+                  </h2>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {conditionInfo.symptoms.map((s: string, i: number) => (
+                      <span key={i} style={{ background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 20, padding: '6px 14px', fontSize: 13 }}>{s}</span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Commonly Prescribed Drugs */}
-              <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
-                <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Pill size={18} color="var(--brand)" /> Commonly prescribed medications
-                </h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>Your doctor will decide what's right for you — these are commonly used in the UK for this condition.</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {conditionInfo.commonly_prescribed_drugs.map((drug, i) => (
-                    <a key={i} href={`/drug?q=${drug}`} style={{
-                      display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px',
-                      background: 'var(--background)', borderRadius: 10, textDecoration: 'none',
-                      color: 'var(--foreground)', border: '1px solid var(--border)', transition: 'all 0.2s'
-                    }}>
-                      <div style={{ width: 32, height: 32, background: 'var(--brand-light)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Pill size={15} color="var(--brand)" />
-                      </div>
-                      <span style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>{drug}</span>
-                      <span style={{ fontSize: 12, color: 'var(--muted)' }}>View →</span>
-                    </a>
-                  ))}
+              {conditionInfo.commonly_prescribed_drugs?.length > 0 && (
+                <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
+                  <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Pill size={18} color="var(--brand)" /> Commonly prescribed medications
+                  </h2>
+                  <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>Your doctor will decide what's right for you.</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {conditionInfo.commonly_prescribed_drugs.map((drug: string, i: number) => (
+                      <a key={i} href={`/drug?q=${drug}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--background)', borderRadius: 10, textDecoration: 'none', color: 'var(--foreground)', border: '1px solid var(--border)' }}>
+                        <div style={{ width: 32, height: 32, background: 'var(--brand-light)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Pill size={15} color="var(--brand)" />
+                        </div>
+                        <span style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>{drug}</span>
+                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>View →</span>
+                      </a>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Lifestyle Tips */}
               {conditionInfo.lifestyle_tips?.length > 0 && (
                 <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
                   <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Heart size={18} color="var(--accent)" /> Lifestyle tips
                   </h2>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {conditionInfo.lifestyle_tips.map((tip, i) => (
+                    {conditionInfo.lifestyle_tips.map((tip: string, i: number) => (
                       <div key={i} style={{ display: 'flex', gap: 10, fontSize: 14, lineHeight: 1.6 }}>
                         <span style={{ color: 'var(--accent)', fontWeight: 700, flexShrink: 0 }}>✓</span>{tip}
                       </div>
@@ -259,7 +221,6 @@ Rules:
                 </div>
               )}
 
-              {/* When to see GP */}
               {conditionInfo.when_to_see_gp && (
                 <div style={{ background: '#FFF8F0', borderRadius: 16, padding: 24, border: '1px solid #FFD4A3' }}>
                   <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
@@ -272,7 +233,7 @@ Rules:
             </>
           ) : (
             <div style={{ background: 'white', borderRadius: 16, padding: 40, border: '1px solid var(--border)', textAlign: 'center' }}>
-              <p style={{ color: 'var(--muted)' }}>Could not load condition information.</p>
+              <p style={{ color: 'var(--muted)' }}>Could not load condition information. Try the AI Agent tab instead.</p>
             </div>
           )}
         </div>
@@ -281,7 +242,6 @@ Rules:
       {/* Agent Tab */}
       {activeTab === 'agent' && (
         <div style={{ background: 'white', borderRadius: 16, border: '1px solid var(--border)', overflow: 'hidden' }}>
-          {/* Agent Header */}
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ width: 36, height: 36, background: 'var(--brand-light)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Brain size={18} color="var(--brand)" />
@@ -295,7 +255,6 @@ Rules:
             </div>
           </div>
 
-          {/* Messages */}
           <div style={{ padding: 16, minHeight: 300, maxHeight: 400, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {messages.map((msg, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
@@ -310,11 +269,7 @@ Rules:
                   {msg.drugLinks && msg.drugLinks.length > 0 && (
                     <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {msg.drugLinks.map((drug, j) => (
-                        <a key={j} href={drug.url} style={{
-                          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
-                          background: 'white', borderRadius: 8, textDecoration: 'none',
-                          color: 'var(--brand)', fontSize: 13, fontWeight: 600, border: '1px solid var(--border)'
-                        }}>
+                        <a key={j} href={drug.url} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'white', borderRadius: 8, textDecoration: 'none', color: 'var(--brand)', fontSize: 13, fontWeight: 600, border: '1px solid var(--border)' }}>
                           <Pill size={13} /> {drug.name} <ChevronRight size={13} style={{ marginLeft: 'auto' }} />
                         </a>
                       ))}
@@ -331,7 +286,6 @@ Rules:
             )}
           </div>
 
-          {/* Input */}
           <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
             <input
               value={input}
@@ -340,10 +294,7 @@ Rules:
               placeholder="Type your answer..."
               style={{ flex: 1, border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', fontSize: 14, outline: 'none', background: 'var(--background)' }}
             />
-            <button onClick={sendMessage} disabled={agentLoading} style={{
-              background: 'var(--brand)', border: 'none', borderRadius: 10, padding: '10px 14px',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: agentLoading ? 0.5 : 1
-            }}>
+            <button onClick={sendMessage} disabled={agentLoading} style={{ background: 'var(--brand)', border: 'none', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: agentLoading ? 0.5 : 1 }}>
               <Send size={16} color="white" />
             </button>
           </div>
@@ -358,5 +309,5 @@ Rules:
 }
 
 export default function ConditionPage() {
-  return <Suspense><ConditionPageContent /></Suspense>;
+  return <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 size={24} color="var(--brand)" style={{ animation: 'spin 1s linear infinite' }} /></div>}><ConditionPageContent /></Suspense>;
 }
