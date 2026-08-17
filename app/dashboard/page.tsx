@@ -148,3 +148,25 @@ export default function Dashboard() {
               </div>
               <div>
                 <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>{item.title}</p>
+                <p style={{ fontSize: 13, color: 'var(--muted)' }}>{item.desc}</p>
+              </div>
+              <ChevronRight size={16} color="var(--muted)" style={{ marginTop: 'auto' }} />
+            </a>
+          ))}
+        </div>
+
+        {/* Popular Medications */}
+        <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Popular medications</h2>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {['Metformin', 'Atorvastatin', 'Lisinopril', 'Omeprazole', 'Amoxicillin', 'Amlodipine', 'Ramipril', 'Levothyroxine', 'Salbutamol', 'Sertraline'].map(drug => (
+              <a key={drug} href={`/drug?q=${drug}`} style={{ background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 20, padding: '6px 14px', fontSize: 13, textDecoration: 'none', color: 'var(--foreground)', fontWeight: 500 }}>
+                {drug}
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
