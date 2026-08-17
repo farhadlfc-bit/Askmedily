@@ -9,18 +9,26 @@ export default function Pricing() {
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    const getUser = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user || null);
+    const supabase = createClient();
+    
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
       setCheckingAuth(false);
-    };
-    getUser();
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setCheckingAuth(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleSubscribe = async (plan: 'basic' | 'premium') => {
     if (!user) {
-      window.location.href = '/login?redirect=/pricing';
+      window.location.href = '/login';
       return;
     }
     setLoading(plan);
@@ -68,7 +76,7 @@ export default function Pricing() {
 
         {!checkingAuth && !user && (
           <div style={{ background: 'var(--brand-light)', borderRadius: 12, padding: '14px 20px', marginBottom: 24, fontSize: 14, color: 'var(--brand)' }}>
-            <a href="/login?redirect=/pricing" style={{ color: 'var(--brand)', fontWeight: 700, textDecoration: 'none' }}>Sign in or create an account</a> to start your free trial
+            <a href="/login" style={{ color: 'var(--brand)', fontWeight: 700, textDecoration: 'none' }}>Sign in or create an account</a> to start your free trial
           </div>
         )}
 
@@ -127,6 +135,7 @@ export default function Pricing() {
               >
                 {loading === item.plan
                   ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Processing...</>
+                  : checkingAuth ? 'Loading...'
                   : user ? 'Start free trial' : 'Sign in to start'
                 }
               </button>
