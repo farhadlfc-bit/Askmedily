@@ -1,12 +1,14 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase';
-import { Pill, Search, Brain, LogOut, ChevronRight, Loader2 } from 'lucide-react';
+import { Pill, Search, Brain, LogOut, Loader2 } from 'lucide-react';
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const [mode, setMode] = useState<'drug' | 'condition'>('drug');
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const supabase = createClient();
 
@@ -14,16 +16,12 @@ export default function Dashboard() {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { window.location.href = '/login'; return; }
-      
       setUser(session.user);
-
-      // Get profile to check subscription status
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
         .single();
-
       setProfile(profileData);
       setLoading(false);
     };
@@ -33,6 +31,15 @@ export default function Dashboard() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     window.location.href = '/';
+  };
+
+  const handleSearch = () => {
+    if (!query.trim()) return;
+    if (mode === 'drug') {
+      window.location.href = `/drug?q=${encodeURIComponent(query)}`;
+    } else {
+      window.location.href = `/condition?q=${encodeURIComponent(query)}`;
+    }
   };
 
   const handleSubscribe = async (plan: 'basic' | 'premium') => {
@@ -60,9 +67,7 @@ export default function Dashboard() {
     return new Date() < trialEnd;
   };
 
-  const isSubscribed = () => {
-    return profile?.plan === 'basic' || profile?.plan === 'premium';
-  };
+  const isSubscribed = () => profile?.plan === 'basic' || profile?.plan === 'premium';
 
   const isExpired = () => {
     if (!profile) return false;
@@ -95,74 +100,87 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: '40px 24px' }}>
-        <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 4 }}>Welcome back 👋</h1>
-          <p style={{ color: 'var(--muted)', fontSize: 14 }}>What would you like to look up today?</p>
-        </div>
+      <div style={{ maxWidth: 700, margin: '0 auto', padding: '40px 24px' }}>
 
-        {/* Trial active — clean, no upgrade pressure */}
+        {/* Trial active */}
         {isTrialActive() && (
-          <div style={{ background: '#E8FBF5', borderRadius: 12, padding: '14px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 18 }}>✅</span>
+          <div style={{ background: '#E8FBF5', borderRadius: 12, padding: '12px 18px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span>✅</span>
             <p style={{ fontSize: 14, color: '#00875A', fontWeight: 600 }}>Your free trial is active — enjoy full access to AskMedily.</p>
           </div>
         )}
 
-        {/* Subscribed — clean, nothing shown */}
-
-        {/* Expired — show upgrade */}
+        {/* Expired */}
         {isExpired() && (
           <div style={{ background: 'white', borderRadius: 16, padding: 24, marginBottom: 24, border: '1px solid var(--border)' }}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Your trial has ended</h2>
-            <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 20 }}>Choose a plan to continue using AskMedily.</p>
+            <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>Your trial has ended</h2>
+            <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 16 }}>Choose a plan to continue using AskMedily.</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {[
-                { plan: 'basic' as const, label: 'Basic', price: '£4.99/month', desc: 'Drug search + side effects' },
-                { plan: 'premium' as const, label: 'Premium', price: '£9.99/month', desc: 'Everything + AI Agent' }
+                { plan: 'basic' as const, label: 'Basic — £4.99/mo' },
+                { plan: 'premium' as const, label: 'Premium — £9.99/mo' }
               ].map(item => (
                 <button key={item.plan} onClick={() => handleSubscribe(item.plan)} disabled={!!checkoutLoading} style={{
                   background: item.plan === 'premium' ? 'var(--brand)' : 'white',
                   color: item.plan === 'premium' ? 'white' : 'var(--foreground)',
-                  border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px',
-                  cursor: 'pointer', textAlign: 'left', opacity: checkoutLoading ? 0.7 : 1
+                  border: '1px solid var(--border)', borderRadius: 10, padding: '12px',
+                  cursor: 'pointer', fontWeight: 600, fontSize: 14, opacity: checkoutLoading ? 0.7 : 1
                 }}>
-                  <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{item.label} — {item.price}</p>
-                  <p style={{ fontSize: 12, opacity: 0.7 }}>{item.desc}</p>
-                  {checkoutLoading === item.plan && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite', marginTop: 4 }} />}
+                  {checkoutLoading === item.plan ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : item.label}
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {/* Quick Actions */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-          {[
-            { icon: <Search size={22} color="var(--brand)" />, title: 'Search a medication', desc: 'Plain English drug information', href: '/?search=true', bg: 'var(--brand-light)' },
-            { icon: <Brain size={22} color="var(--accent)" />, title: 'Ask about a condition', desc: 'AI guides you to the right medication', href: '/condition?q=', bg: '#E8FBF5' }
-          ].map((item, i) => (
-            <a key={i} href={item.href} style={{ background: 'white', borderRadius: 14, padding: 20, border: '1px solid var(--border)', textDecoration: 'none', color: 'var(--foreground)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ width: 44, height: 44, background: item.bg, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {item.icon}
-              </div>
-              <div>
-                <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>{item.title}</p>
-                <p style={{ fontSize: 13, color: 'var(--muted)' }}>{item.desc}</p>
-              </div>
-              <ChevronRight size={16} color="var(--muted)" style={{ marginTop: 'auto' }} />
-            </a>
+        {/* Search */}
+        <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 6 }}>What are you looking for?</h1>
+        <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 20 }}>Search for a medication or condition in plain English.</p>
+
+        {/* Mode Toggle */}
+        <div style={{ display: 'flex', gap: 4, background: 'white', borderRadius: 12, padding: 4, marginBottom: 10, border: '1px solid var(--border)' }}>
+          {(['drug', 'condition'] as const).map((m) => (
+            <button key={m} onClick={() => setMode(m)} style={{
+              flex: 1, padding: '10px', borderRadius: 9, border: 'none', cursor: 'pointer',
+              fontSize: 14, fontWeight: 600, transition: 'all 0.2s',
+              background: mode === m ? 'var(--brand)' : 'transparent',
+              color: mode === m ? 'white' : 'var(--muted)'
+            }}>
+              {m === 'drug' ? '💊 Search a Medication' : '🔍 Search a Condition'}
+            </button>
           ))}
         </div>
 
-        {/* Popular Medications */}
-        <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Popular medications</h2>
+        {/* Search Input */}
+        <div style={{ display: 'flex', gap: 8, background: 'white', borderRadius: 14, padding: 8, border: '1px solid var(--border)', boxShadow: '0 4px 24px rgba(0,87,255,0.08)', marginBottom: 24 }}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <Search size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              placeholder={mode === 'drug' ? 'e.g. Metformin, Atorvastatin...' : 'e.g. Type 2 Diabetes, Hypertension...'}
+              style={{ width: '100%', padding: '13px 14px 13px 42px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 15, outline: 'none', background: 'var(--background)', color: 'var(--foreground)' }}
+            />
+          </div>
+          <button onClick={handleSearch} style={{ background: 'var(--brand)', color: 'white', border: 'none', borderRadius: 10, padding: '13px 24px', fontSize: 15, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            Search
+          </button>
+        </div>
+
+        {/* Popular */}
+        <div style={{ marginBottom: 24 }}>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 10 }}>
+            {mode === 'drug' ? 'Popular medications' : 'Common conditions'}
+          </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {['Metformin', 'Atorvastatin', 'Lisinopril', 'Omeprazole', 'Amoxicillin', 'Amlodipine', 'Ramipril', 'Levothyroxine', 'Salbutamol', 'Sertraline'].map(drug => (
-              <a key={drug} href={`/drug?q=${drug}`} style={{ background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 20, padding: '6px 14px', fontSize: 13, textDecoration: 'none', color: 'var(--foreground)', fontWeight: 500 }}>
-                {drug}
-              </a>
+            {(mode === 'drug'
+              ? ['Metformin', 'Atorvastatin', 'Lisinopril', 'Omeprazole', 'Amoxicillin', 'Sertraline', 'Ramipril', 'Salbutamol', 'Amlodipine', 'Levothyroxine']
+              : ['Type 2 Diabetes', 'Hypertension', 'Asthma', 'Depression', 'Anxiety', 'High Cholesterol', 'COPD', 'Arthritis']
+            ).map(item => (
+              <button key={item} onClick={() => setQuery(item)} style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 20, padding: '6px 14px', fontSize: 13, cursor: 'pointer', color: 'var(--foreground)' }}>
+                {item}
+              </button>
             ))}
           </div>
         </div>
