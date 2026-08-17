@@ -1,6 +1,7 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase';
 import { Pill, AlertTriangle, CheckCircle, Info, ArrowLeft, Loader2 } from 'lucide-react';
 
 interface DrugInfo {
@@ -22,8 +23,19 @@ function DrugPageContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
   const [drugInfo, setDrugInfo] = useState<DrugInfo | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState('');
+
+useEffect(() => {
+  const checkAuth = async () => {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = '/login';
+    }
+  };
+  checkAuth();
+}, []);
 
   useEffect(() => {
     if (!query) return;
