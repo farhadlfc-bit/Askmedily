@@ -1,6 +1,7 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase';
 import { Brain, Send, ArrowLeft, Pill, Loader2, ChevronRight, AlertCircle, Heart, Activity, Stethoscope } from 'lucide-react';
 
 interface ConditionInfo {
@@ -38,8 +39,16 @@ const categoryColors: Record<string, string> = {
 function ConditionPageContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
-  const [conditionInfo, setConditionInfo] = useState<ConditionInfo | null>(null);
-  const [loadingInfo, setLoadingInfo] = useState(true);
+  useEffect(() => {
+  const checkAuth = async () => {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = '/login';
+    }
+  };
+  checkAuth();
+}, []);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [agentLoading, setAgentLoading] = useState(false);
