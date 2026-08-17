@@ -1,26 +1,74 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase';
-import { Pill, Search, Brain, Star, LogOut, ChevronRight } from 'lucide-react';
+import { Pill, Search, Brain, LogOut, ChevronRight, Loader2 } from 'lucide-react';
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { window.location.href = '/login'; return; }
-      setUser(user);
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { window.location.href = '/login'; return; }
+      
+      setUser(session.user);
+
+      // Get profile to check subscription status
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      setProfile(profileData);
       setLoading(false);
     };
-    getUser();
+    init();
   }, []);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     window.location.href = '/';
+  };
+
+  const handleSubscribe = async (plan: 'basic' | 'premium') => {
+    if (!user) return;
+    setCheckoutLoading(plan);
+    try {
+      const res = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, userId: user.id, email: user.email })
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else alert('Something went wrong. Please try again.');
+    } catch {
+      alert('Something went wrong. Please try again.');
+    }
+    setCheckoutLoading(null);
+  };
+
+  const isTrialActive = () => {
+    if (!profile) return false;
+    if (profile.plan === 'basic' || profile.plan === 'premium') return false;
+    const trialEnd = new Date(profile.trial_ends_at);
+    return new Date() < trialEnd;
+  };
+
+  const isSubscribed = () => {
+    return profile?.plan === 'basic' || profile?.plan === 'premium';
+  };
+
+  const isExpired = () => {
+    if (!profile) return false;
+    if (isSubscribed()) return false;
+    const trialEnd = new Date(profile.trial_ends_at);
+    return new Date() > trialEnd;
   };
 
   if (loading) return (
@@ -40,7 +88,7 @@ export default function Dashboard() {
           <span style={{ fontWeight: 700, fontSize: 18 }}>AskMedily</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <span style={{ fontSize: 14, color: 'var(--muted)' }}>{user?.email}</span>
+          <span style={{ fontSize: 13, color: 'var(--muted)' }}>{user?.email}</span>
           <button onClick={handleSignOut} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', fontSize: 13, color: 'var(--muted)' }}>
             <LogOut size={14} /> Sign out
           </button>
@@ -48,29 +96,51 @@ export default function Dashboard() {
       </nav>
 
       <div style={{ maxWidth: 800, margin: '0 auto', padding: '40px 24px' }}>
-        {/* Welcome */}
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 6 }}>Welcome back 👋</h1>
-          <p style={{ color: 'var(--muted)' }}>What would you like to look up today?</p>
+        <div style={{ marginBottom: 28 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 4 }}>Welcome back 👋</h1>
+          <p style={{ color: 'var(--muted)', fontSize: 14 }}>What would you like to look up today?</p>
         </div>
 
-        {/* Trial Banner */}
-        <div style={{ background: 'linear-gradient(135deg, var(--brand), #0040CC)', borderRadius: 16, padding: 24, marginBottom: 28, color: 'white' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <Star size={18} color="#FFD700" fill="#FFD700" />
-            <span style={{ fontWeight: 700, fontSize: 16 }}>Free Trial Active</span>
+        {/* Trial active — clean, no upgrade pressure */}
+        {isTrialActive() && (
+          <div style={{ background: '#E8FBF5', borderRadius: 12, padding: '14px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 18 }}>✅</span>
+            <p style={{ fontSize: 14, color: '#00875A', fontWeight: 600 }}>Your free trial is active — enjoy full access to AskMedily.</p>
           </div>
-          <p style={{ fontSize: 14, opacity: 0.9, marginBottom: 16 }}>You have full access to all features for 2 days. Upgrade to keep access after your trial ends.</p>
-          <a href="/pricing" style={{ display: 'inline-block', background: 'white', color: 'var(--brand)', padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
-            View plans →
-          </a>
-        </div>
+        )}
+
+        {/* Subscribed — clean, nothing shown */}
+
+        {/* Expired — show upgrade */}
+        {isExpired() && (
+          <div style={{ background: 'white', borderRadius: 16, padding: 24, marginBottom: 24, border: '1px solid var(--border)' }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Your trial has ended</h2>
+            <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 20 }}>Choose a plan to continue using AskMedily.</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {[
+                { plan: 'basic' as const, label: 'Basic', price: '£4.99/month', desc: 'Drug search + side effects' },
+                { plan: 'premium' as const, label: 'Premium', price: '£9.99/month', desc: 'Everything + AI Agent' }
+              ].map(item => (
+                <button key={item.plan} onClick={() => handleSubscribe(item.plan)} disabled={!!checkoutLoading} style={{
+                  background: item.plan === 'premium' ? 'var(--brand)' : 'white',
+                  color: item.plan === 'premium' ? 'white' : 'var(--foreground)',
+                  border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px',
+                  cursor: 'pointer', textAlign: 'left', opacity: checkoutLoading ? 0.7 : 1
+                }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{item.label} — {item.price}</p>
+                  <p style={{ fontSize: 12, opacity: 0.7 }}>{item.desc}</p>
+                  {checkoutLoading === item.plan && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite', marginTop: 4 }} />}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Quick Actions */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
           {[
-            { icon: <Search size={22} color="var(--brand)" />, title: 'Search a medication', desc: 'Plain English drug information', href: '/', bg: 'var(--brand-light)' },
-            { icon: <Brain size={22} color="var(--accent)" />, title: 'Ask about a condition', desc: 'AI guides you to the right medication', href: '/condition', bg: '#E8FBF5' }
+            { icon: <Search size={22} color="var(--brand)" />, title: 'Search a medication', desc: 'Plain English drug information', href: '/?search=true', bg: 'var(--brand-light)' },
+            { icon: <Brain size={22} color="var(--accent)" />, title: 'Ask about a condition', desc: 'AI guides you to the right medication', href: '/condition?q=', bg: '#E8FBF5' }
           ].map((item, i) => (
             <a key={i} href={item.href} style={{ background: 'white', borderRadius: 14, padding: 20, border: '1px solid var(--border)', textDecoration: 'none', color: 'var(--foreground)', display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ width: 44, height: 44, background: item.bg, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -78,25 +148,3 @@ export default function Dashboard() {
               </div>
               <div>
                 <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>{item.title}</p>
-                <p style={{ fontSize: 13, color: 'var(--muted)' }}>{item.desc}</p>
-              </div>
-              <ChevronRight size={16} color="var(--muted)" style={{ marginTop: 'auto' }} />
-            </a>
-          ))}
-        </div>
-
-        {/* Popular Medications */}
-        <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Popular medications</h2>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {['Metformin', 'Atorvastatin', 'Lisinopril', 'Omeprazole', 'Amoxicillin', 'Amlodipine', 'Ramipril', 'Levothyroxine', 'Salbutamol', 'Sertraline'].map(drug => (
-              <a key={drug} href={`/drug?q=${drug}`} style={{ background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 20, padding: '6px 14px', fontSize: 13, textDecoration: 'none', color: 'var(--foreground)', fontWeight: 500 }}>
-                {drug}
-              </a>
-            ))}
-          </div>
-        </div>
-      </div>
-    </main>
-  );
-}
