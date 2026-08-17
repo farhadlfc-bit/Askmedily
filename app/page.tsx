@@ -1,10 +1,22 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Pill, Brain, Shield, ChevronRight, CheckCircle } from 'lucide-react';
+import { createClient } from '@/lib/supabase';
 
 export default function Home() {
   const [query, setQuery] = useState('');
-  const [mode, setMode] = useState<'drug' | 'condition'>('drug');
+const [mode, setMode] = useState<'drug' | 'condition'>('drug');
+
+useEffect(() => {
+  const checkAuth = async () => {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      window.location.href = '/dashboard';
+    }
+  };
+  checkAuth();
+}, []);
 
  const handleSearch = () => {
     if (!query.trim()) return;
