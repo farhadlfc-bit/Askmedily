@@ -6,9 +6,13 @@ export default function Home() {
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState<'drug' | 'condition'>('drug');
 
-  const handleSearch = () => {
+ const handleSearch = () => {
     if (!query.trim()) return;
-    window.location.href = '/login';
+    if (mode === 'drug') {
+      window.location.href = `/drug?q=${encodeURIComponent(query)}`;
+    } else {
+      window.location.href = `/condition?q=${encodeURIComponent(query)}`;
+    }
   };
 
   return (
