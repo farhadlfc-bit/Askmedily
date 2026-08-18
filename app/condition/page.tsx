@@ -24,6 +24,31 @@ function ConditionPageContent() {
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
 
   useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        window.location.href = '/login';
+        return;
+      }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('plan, trial_ends_at')
+        .eq('id', session.user.id)
+        .single();
+      if (profile) {
+        const isSubscribed = profile.plan === 'basic' || profile.plan === 'premium';
+        const trialActive = profile.trial_ends_at && new Date() < new Date(profile.trial_ends_at);
+        if (!isSubscribed && !trialActive) {
+          window.location.href = '/pricing?expired=true';
+          return;
+        }
+      }
+    };
+    checkAuth();
+  }, []);
+  
+  useEffect(() => {
     if (query) {
       fetchConditionInfo(query);
       startAgent(query);
