@@ -4,14 +4,14 @@ import { createClient } from '@/lib/supabase';
 import { Pill, ArrowLeft, Volume2, User, CreditCard, Loader2, Play, Check } from 'lucide-react';
 
 const VOICE_OPTIONS = [
-  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel', description: 'Calm, clear, American female' },
-  { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi', description: 'Strong, confident female' },
+  { id: 'Xb7hH8MSUJpSbSDYk0k2', name: 'Alice', description: 'Clear, engaging British female — ideal for education' },
+  { id: 'onwK4e9ZLuTAKqWW03F9', name: 'Daniel', description: 'Steady British broadcaster — professional and authoritative' },
+  { id: 'r3cuLnjnQ2BjA06ZloeU', name: 'Becky', description: 'Warm, approachable British female narrator' },
+  { id: '2styzLg7OSeuhPP6uQ26', name: 'Philip', description: 'Clear, measured British male — great for factual content' },
+  { id: 'wjZJDZGwI2sD6seofPVe', name: 'Nina', description: 'Refined British RP female — warm and articulate' },
+  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel', description: 'Calm, clear American female' },
   { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella', description: 'Soft, warm female' },
-  { id: 'ErXwobaYiN019PkySvjV', name: 'Antoni', description: 'Warm, male' },
-  { id: 'MF3mGyEYCl7XYWbV9V6O', name: 'Elli', description: 'Emotional, young female' },
   { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh', description: 'Deep, male' },
-  { id: 'VR6AewLTigWG4xSOukaG', name: 'Arnold', description: 'Crisp, male' },
-  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam', description: 'Deep, narrative male' },
   { id: 'yoZ06aMxZJJ28mfd3POQ', name: 'Sam', description: 'Raspy, young male' },
 ];
 
