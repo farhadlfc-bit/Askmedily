@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/lib/supabase';
-import { Pill, Search, LogOut, Loader2, X, Mic, MicOff } from 'lucide-react';
+import { Pill, Search, LogOut, Loader2, X, Mic, MicOff, Camera } from 'lucide-react';
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
@@ -14,7 +14,10 @@ export default function Dashboard() {
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [showTrialBanner, setShowTrialBanner] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoError, setPhotoError] = useState('');
   const recognitionRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -121,6 +124,50 @@ export default function Dashboard() {
     };
     recognition.onerror = () => { setIsListening(false); };
     recognition.start();
+  };
+
+  const handlePhotoSearch = () => {
+    setPhotoError('');
+    fileInputRef.current?.click();
+  };
+
+  const handlePhotoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setPhotoLoading(true);
+    setPhotoError('');
+
+    try {
+      // Convert to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(',')[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const res = await fetch('/api/identify-medication', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64 })
+      });
+      const data = await res.json();
+
+      if (data.found) {
+        window.location.href = `/drug?q=${encodeURIComponent(data.name)}`;
+      } else {
+        setPhotoError(data.message || 'Could not identify medication. Please try a clearer photo.');
+      }
+    } catch {
+      setPhotoError('Something went wrong. Please try again.');
+    }
+
+    setPhotoLoading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSubscribe = async (plan: 'basic' | 'premium') => {
@@ -271,14 +318,38 @@ export default function Dashboard() {
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
             minWidth: 80, transition: 'all 0.2s'
           }}>
-            {isListening
-              ? <MicOff size={18} color="white" />
-              : <Mic size={18} color="var(--brand)" />
-            }
+            {isListening ? <MicOff size={18} color="white" /> : <Mic size={18} color="var(--brand)" />}
             <span style={{ fontSize: 10, color: isListening ? 'white' : 'var(--muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>
               {isListening ? 'Listening...' : 'Voice Search'}
             </span>
           </button>
+
+          {/* Photo button */}
+          <button onClick={handlePhotoSearch} disabled={photoLoading} style={{
+            background: photoLoading ? 'var(--brand-light)' : 'white',
+            border: '1px solid var(--border)', borderRadius: 14,
+            padding: '0 16px', cursor: 'pointer',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
+            minWidth: 80, transition: 'all 0.2s', opacity: photoLoading ? 0.7 : 1
+          }}>
+            {photoLoading
+              ? <Loader2 size={18} color="var(--brand)" style={{ animation: 'spin 1s linear infinite' }} />
+              : <Camera size={18} color="var(--brand)" />
+            }
+            <span style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+              {photoLoading ? 'Scanning...' : 'Photo Search'}
+            </span>
+          </button>
+
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handlePhotoSelected}
+            style={{ display: 'none' }}
+          />
         </div>
 
         {/* Listening indicator */}
@@ -286,6 +357,16 @@ export default function Dashboard() {
           <div style={{ background: '#FFF0F0', borderRadius: 10, padding: '10px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FF4444', animation: 'pulse-dot 1s infinite' }} />
             <span style={{ fontSize: 14, color: '#FF4444', fontWeight: 600 }}>Listening... speak now</span>
+          </div>
+        )}
+
+        {/* Photo error */}
+        {photoError && (
+          <div style={{ background: '#FFF0F0', borderRadius: 10, padding: '10px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ fontSize: 14, color: 'var(--danger)' }}>{photoError}</span>
+            <button onClick={() => setPhotoError('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}>
+              <X size={14} />
+            </button>
           </div>
         )}
 
