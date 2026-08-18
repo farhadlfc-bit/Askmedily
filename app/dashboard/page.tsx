@@ -133,9 +133,12 @@ export default function Dashboard() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <span style={{ fontSize: 13, color: 'var(--muted)' }}>{user?.email}</span>
-          <button onClick={handleSignOut} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', fontSize: 13, color: 'var(--muted)' }}>
-            <LogOut size={14} /> Sign out
-          </button>
+          <a href="/settings" style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', fontSize: 13, color: 'var(--muted)', textDecoration: 'none' }}>
+  ⚙️ Settings
+</a>
+<button onClick={handleSignOut} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', fontSize: 13, color: 'var(--muted)' }}>
+  <LogOut size={14} /> Sign out
+</button>
         </div>
       </nav>
 
