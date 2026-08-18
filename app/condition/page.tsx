@@ -2,6 +2,7 @@
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { Brain, Send, ArrowLeft, Pill, Loader2, ChevronRight, AlertCircle, Heart, Activity, Stethoscope, Volume2, Square } from 'lucide-react';
+import { createClient } from '@/lib/supabase';
 
 interface Message {
   role: 'agent' | 'user';
