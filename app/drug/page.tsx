@@ -38,6 +38,23 @@ function DrugPageContent() {
         window.location.href = '/login';
         return;
       }
+
+      // Check subscription status
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('plan, trial_ends_at')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profile) {
+        const isSubscribed = profile.plan === 'basic' || profile.plan === 'premium';
+        const trialActive = profile.trial_ends_at && new Date() < new Date(profile.trial_ends_at);
+        if (!isSubscribed && !trialActive) {
+          window.location.href = '/pricing?expired=true';
+          return;
+        }
+      }
+
       setAuthChecked(true);
     };
     checkAuth();
