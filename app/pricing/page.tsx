@@ -7,23 +7,18 @@ export default function Pricing() {
   const [loading, setLoading] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [isExpired, setIsExpired] = useState(false);
 
   useEffect(() => {
-    const supabase = createClient();
-    
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+    const getUser = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user || null);
       setCheckingAuth(false);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setCheckingAuth(false);
-    });
-
-    return () => subscription.unsubscribe();
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('expired') === 'true') setIsExpired(true);
+    };
+    getUser();
   }, []);
 
   const handleSubscribe = async (plan: 'basic' | 'premium') => {
@@ -64,15 +59,32 @@ export default function Pricing() {
         )}
       </nav>
 
-      <div style={{ maxWidth: 760, margin: '0 auto', padding: '60px 24px', textAlign: 'center' }}>
-        <a href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--muted)', textDecoration: 'none', fontSize: 14, marginBottom: 32 }}>
-          <ArrowLeft size={16} /> Back
-        </a>
-        <h1 style={{ fontSize: 36, fontWeight: 800, marginBottom: 8 }}>Simple, honest pricing</h1>
-        <p style={{ color: 'var(--muted)', marginBottom: 12 }}>Start with a 2-day free trial. No credit card required until trial ends.</p>
-        <div style={{ display: 'inline-block', background: '#E8FBF5', color: '#00875A', padding: '6px 16px', borderRadius: 20, fontSize: 13, fontWeight: 600, marginBottom: 40 }}>
-          🎉 2-day free trial on all plans
+      {/* Expired banner */}
+      {isExpired && (
+        <div style={{ background: '#FFF8F0', borderTop: '3px solid #FF9500', padding: '14px 32px', textAlign: 'center' }}>
+          <p style={{ fontSize: 15, color: '#FF9500', fontWeight: 600 }}>
+            ⏰ Your free trial has ended — choose a plan below to continue using AskMedily.
+          </p>
         </div>
+      )}
+
+      <div style={{ maxWidth: 760, margin: '0 auto', padding: '60px 24px', textAlign: 'center' }}>
+        {!isExpired && (
+          <a href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--muted)', textDecoration: 'none', fontSize: 14, marginBottom: 32 }}>
+            <ArrowLeft size={16} /> Back
+          </a>
+        )}
+
+        <h1 style={{ fontSize: 36, fontWeight: 800, marginBottom: 8 }}>Simple, honest pricing</h1>
+        <p style={{ color: 'var(--muted)', marginBottom: 12 }}>
+          {isExpired ? 'Your trial has ended. Subscribe to keep access.' : 'Start with a 2-day free trial. No credit card required until trial ends.'}
+        </p>
+
+        {!isExpired && (
+          <div style={{ display: 'inline-block', background: '#E8FBF5', color: '#00875A', padding: '6px 16px', borderRadius: 20, fontSize: 13, fontWeight: 600, marginBottom: 40 }}>
+            🎉 2-day free trial on all plans
+          </div>
+        )}
 
         {!checkingAuth && !user && (
           <div style={{ background: 'var(--brand-light)', borderRadius: 12, padding: '14px 20px', marginBottom: 24, fontSize: 14, color: 'var(--brand)' }}>
@@ -85,13 +97,13 @@ export default function Pricing() {
             {
               plan: 'basic' as const,
               name: 'Basic', price: '£4.99', period: '/month',
-              features: ['Drug search & plain English pages', 'Side effects ranked by frequency', 'Drug interaction information', 'NHS & FDA sourced data', 'Mobile friendly'],
+              features: ['Drug search & plain English pages', 'Side effects ranked by frequency', 'Drug interaction information', 'NHS & FDA sourced data', 'Photo search', 'Voice search'],
               highlight: false
             },
             {
               plan: 'premium' as const,
               name: 'Premium', price: '£9.99', period: '/month',
-              features: ['Everything in Basic', 'AI Condition Agent', 'Personalised medication history', 'Save & bookmark medications', 'Priority support', 'Early access to new features'],
+              features: ['Everything in Basic', 'AI Condition Agent', 'Voice agent (listen to drug info)', 'Personalised medication history', 'Priority support', 'Early access to new features'],
               highlight: true
             }
           ].map((item) => (
@@ -111,7 +123,8 @@ export default function Pricing() {
                 <span style={{ fontSize: 40, fontWeight: 800 }}>{item.price}</span>
                 <span style={{ opacity: 0.7 }}>{item.period}</span>
               </div>
-              <p style={{ fontSize: 12, opacity: 0.7, marginBottom: 24 }}>after 2-day free trial</p>
+              {!isExpired && <p style={{ fontSize: 12, opacity: 0.7, marginBottom: 24 }}>after 2-day free trial</p>}
+              {isExpired && <p style={{ fontSize: 12, opacity: 0.7, marginBottom: 24 }}>billed monthly, cancel anytime</p>}
               <ul style={{ listStyle: 'none', marginBottom: 28, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {item.features.map((f, j) => (
                   <li key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14 }}>
@@ -136,7 +149,7 @@ export default function Pricing() {
                 {loading === item.plan
                   ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Processing...</>
                   : checkingAuth ? 'Loading...'
-                  : user ? 'Start free trial' : 'Sign in to start'
+                  : user ? (isExpired ? 'Subscribe now' : 'Start free trial') : 'Sign in to start'
                 }
               </button>
             </div>
