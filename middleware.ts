@@ -10,13 +10,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Check for Supabase session cookie
-  const cookies = request.cookies.getAll()
-  const hasSession = cookies.some(cookie => 
-    cookie.name.startsWith('sb-') && cookie.name.endsWith('-auth-token')
-  )
+  // Check for Supabase session cookie — exact name for this project
+  const sessionCookie = request.cookies.get('sb-hjllgaodcutlaqqievtn-auth-token')
 
-  if (!hasSession) {
+  if (!sessionCookie || !sessionCookie.value) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirect', path)
     return NextResponse.redirect(loginUrl)
