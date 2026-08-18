@@ -49,7 +49,6 @@ export default function Dashboard() {
     if (!query.trim()) return;
     setSearching(true);
     setSuggestion(null);
-
     try {
       const res = await fetch('/api/search', {
         method: 'POST',
@@ -57,29 +56,22 @@ export default function Dashboard() {
         body: JSON.stringify({ query, type: mode })
       });
       const data = await res.json();
-
       if (data.exactMatch) {
-        if (mode === 'drug') {
-          window.location.href = `/drug?q=${encodeURIComponent(data.exactMatch.name)}`;
-        } else {
-          window.location.href = `/condition?q=${encodeURIComponent(data.exactMatch.name)}`;
-        }
+        window.location.href = mode === 'drug'
+          ? `/drug?q=${encodeURIComponent(data.exactMatch.name)}`
+          : `/condition?q=${encodeURIComponent(data.exactMatch.name)}`;
       } else if (data.suggestion) {
         setSuggestion(data.suggestion);
         setSearching(false);
       } else {
-        if (mode === 'drug') {
-          window.location.href = `/drug?q=${encodeURIComponent(query)}`;
-        } else {
-          window.location.href = `/condition?q=${encodeURIComponent(query)}`;
-        }
+        window.location.href = mode === 'drug'
+          ? `/drug?q=${encodeURIComponent(query)}`
+          : `/condition?q=${encodeURIComponent(query)}`;
       }
     } catch {
-      if (mode === 'drug') {
-        window.location.href = `/drug?q=${encodeURIComponent(query)}`;
-      } else {
-        window.location.href = `/condition?q=${encodeURIComponent(query)}`;
-      }
+      window.location.href = mode === 'drug'
+        ? `/drug?q=${encodeURIComponent(query)}`
+        : `/condition?q=${encodeURIComponent(query)}`;
     }
   };
 
@@ -88,29 +80,23 @@ export default function Dashboard() {
       alert('Voice input is not supported in your browser. Please try Chrome.');
       return;
     }
-
     if (isListening) {
       recognitionRef.current?.stop();
       setIsListening(false);
       return;
     }
-
     const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
-
     recognition.lang = 'en-GB';
     recognition.continuous = false;
     recognition.interimResults = false;
-
     recognition.onstart = () => setIsListening(true);
     recognition.onend = () => setIsListening(false);
-
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
       setQuery(transcript);
       setSuggestion(null);
-      // Auto search after voice input
       setTimeout(() => {
         setSearching(true);
         fetch('/api/search', {
@@ -133,12 +119,7 @@ export default function Dashboard() {
         }).catch(() => setSearching(false));
       }, 500);
     };
-
-    recognition.onerror = () => {
-      setIsListening(false);
-      alert('Could not understand. Please try again.');
-    };
-
+    recognition.onerror = () => { setIsListening(false); };
     recognition.start();
   };
 
@@ -163,17 +144,14 @@ export default function Dashboard() {
   const isTrialActive = () => {
     if (!profile) return false;
     if (profile.plan === 'basic' || profile.plan === 'premium') return false;
-    const trialEnd = new Date(profile.trial_ends_at);
-    return new Date() < trialEnd;
+    return new Date() < new Date(profile.trial_ends_at);
   };
 
   const isSubscribed = () => profile?.plan === 'basic' || profile?.plan === 'premium';
 
   const isExpired = () => {
-    if (!profile) return false;
-    if (isSubscribed()) return false;
-    const trialEnd = new Date(profile.trial_ends_at);
-    return new Date() > trialEnd;
+    if (!profile || isSubscribed()) return false;
+    return new Date() > new Date(profile.trial_ends_at);
   };
 
   if (loading) return (
@@ -184,7 +162,6 @@ export default function Dashboard() {
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--background)' }}>
-      {/* Nav */}
       <nav style={{ background: 'white', borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 36, height: 36, background: 'var(--brand)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -194,7 +171,7 @@ export default function Dashboard() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 13, color: 'var(--muted)' }}>{user?.email}</span>
-          <a href="/settings" style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', fontSize: 13, color: 'var(--muted)', textDecoration: 'none' }}>
+          <a href="/settings" style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px', fontSize: 13, color: 'var(--muted)', textDecoration: 'none' }}>
             ⚙️ Settings
           </a>
           <button onClick={handleSignOut} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', fontSize: 13, color: 'var(--muted)' }}>
@@ -205,7 +182,6 @@ export default function Dashboard() {
 
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '50px 24px' }}>
 
-        {/* Trial banner */}
         {isTrialActive() && showTrialBanner && (
           <div style={{ background: '#E8FBF5', borderRadius: 12, padding: '12px 18px', marginBottom: 28, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -218,7 +194,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Expired */}
         {isExpired() && (
           <div style={{ background: 'white', borderRadius: 16, padding: 24, marginBottom: 28, border: '1px solid var(--border)' }}>
             <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>Your trial has ended</h2>
@@ -241,7 +216,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Hero */}
         <h1 style={{ fontSize: 'clamp(36px, 5vw, 56px)', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-0.03em', marginBottom: 12 }}>
           What are you<br />
           <span style={{ color: 'var(--brand)' }}>looking for?</span>
@@ -264,44 +238,50 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Search Input */}
-        <div style={{ display: 'flex', gap: 8, background: 'white', borderRadius: 16, padding: 8, border: '1px solid var(--border)', boxShadow: '0 4px 24px rgba(0,87,255,0.08)', marginBottom: 12 }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+        {/* Search row */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'stretch', marginBottom: 12 }}>
+          {/* Text input */}
+          <div style={{ position: 'relative', flex: 1, background: 'white', borderRadius: 14, border: '1px solid var(--border)', boxShadow: '0 4px 24px rgba(0,87,255,0.08)', display: 'flex', alignItems: 'center' }}>
+            <Search size={18} style={{ position: 'absolute', left: 16, color: 'var(--muted)', flexShrink: 0 }} />
             <input
               value={query}
               onChange={(e) => { setQuery(e.target.value); setSuggestion(null); }}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder={mode === 'drug' ? 'e.g. Metformin, Atorvastatin...' : 'e.g. Type 2 Diabetes, Hypertension...'}
+              placeholder={mode === 'drug' ? 'e.g. Metformin, Atorvastatin...' : 'e.g. Diabetes, Hypertension...'}
               autoFocus
-              style={{ width: '100%', padding: '14px 14px 14px 42px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 16, outline: 'none', background: 'var(--background)', color: 'var(--foreground)' }}
+              style={{ width: '100%', padding: '14px 14px 14px 44px', border: 'none', borderRadius: 14, fontSize: 15, outline: 'none', background: 'transparent', color: 'var(--foreground)' }}
             />
           </div>
 
-          {/* Voice input button */}
-          <button
-            onClick={handleVoiceInput}
-            style={{
-              background: isListening ? '#FF4444' : 'var(--background)',
-              border: '1px solid var(--border)', borderRadius: 10,
-              padding: '14px', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'all 0.2s'
-            }}
-            title="Search by voice"
-          >
-            {isListening
-              ? <MicOff size={18} color="white" />
-              : <Mic size={18} color="var(--muted)" />
-            }
+          {/* Search button */}
+          <button onClick={handleSearch} disabled={searching} style={{
+            background: 'var(--brand)', color: 'white', border: 'none', borderRadius: 14,
+            padding: '0 24px', fontSize: 15, fontWeight: 700, cursor: 'pointer',
+            whiteSpace: 'nowrap', opacity: searching ? 0.7 : 1,
+            display: 'flex', alignItems: 'center', gap: 8
+          }}>
+            {searching ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Searching...</> : 'Search'}
           </button>
 
-          <button onClick={handleSearch} disabled={searching} style={{ background: 'var(--brand)', color: 'white', border: 'none', borderRadius: 10, padding: '14px 28px', fontSize: 16, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', opacity: searching ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: 8 }}>
-            {searching ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Searching...</> : 'Search'}
+          {/* Voice button */}
+          <button onClick={handleVoiceInput} style={{
+            background: isListening ? '#FF4444' : 'white',
+            border: '1px solid var(--border)', borderRadius: 14,
+            padding: '0 16px', cursor: 'pointer',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
+            minWidth: 80, transition: 'all 0.2s'
+          }}>
+            {isListening
+              ? <MicOff size={18} color="white" />
+              : <Mic size={18} color="var(--brand)" />
+            }
+            <span style={{ fontSize: 10, color: isListening ? 'white' : 'var(--muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+              {isListening ? 'Listening...' : 'Voice Search'}
+            </span>
           </button>
         </div>
 
-        {/* Voice listening indicator */}
+        {/* Listening indicator */}
         {isListening && (
           <div style={{ background: '#FFF0F0', borderRadius: 10, padding: '10px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FF4444', animation: 'pulse-dot 1s infinite' }} />
@@ -309,19 +289,17 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Did you mean suggestion */}
+        {/* Did you mean */}
         {suggestion && (
           <div style={{ background: 'var(--brand-light)', borderRadius: 10, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
             <span style={{ fontSize: 14, color: 'var(--brand)' }}>
               Did you mean <strong>{suggestion.name}</strong>?
             </span>
-            <button
-              onClick={() => {
-                if (mode === 'drug') window.location.href = `/drug?q=${encodeURIComponent(suggestion.name)}`;
-                else window.location.href = `/condition?q=${encodeURIComponent(suggestion.name)}`;
-              }}
-              style={{ background: 'var(--brand)', color: 'white', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-            >
+            <button onClick={() => {
+              window.location.href = mode === 'drug'
+                ? `/drug?q=${encodeURIComponent(suggestion.name)}`
+                : `/condition?q=${encodeURIComponent(suggestion.name)}`;
+            }} style={{ background: 'var(--brand)', color: 'white', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               Yes, search for {suggestion.name}
             </button>
           </div>
