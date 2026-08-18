@@ -23,8 +23,22 @@ function DrugPageContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
   const [drugInfo, setDrugInfo] = useState<DrugInfo | null>(null);
-const [loading, setLoading] = useState(true);
-const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        window.location.href = '/login';
+        return;
+      }
+      setAuthChecked(true);
+    };
+    checkAuth();
+  }, []);
 
 useEffect(() => {
   const checkAuth = async () => {
@@ -67,6 +81,12 @@ useEffect(() => {
     if (freq.includes('Uncommon') || freq.includes('0.1-1%')) return '25%';
     return '10%';
   };
+  
+if (!authChecked) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 40, height: 40, border: '3px solid var(--brand-light)', borderTopColor: 'var(--brand)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+    </div>
+  );
 
   if (loading) return (
     <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
