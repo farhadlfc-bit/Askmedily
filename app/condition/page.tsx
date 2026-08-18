@@ -1,7 +1,7 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-import { Brain, Send, ArrowLeft, Pill, Loader2, ChevronRight, AlertCircle, Heart, Activity, Stethoscope } from 'lucide-react';
+import { Brain, Send, ArrowLeft, Pill, Loader2, ChevronRight, AlertCircle, Heart, Activity, Stethoscope, Volume2, Square } from 'lucide-react';
 
 interface Message {
   role: 'agent' | 'user';
@@ -19,6 +19,9 @@ function ConditionPageContent() {
   const [conditionInfo, setConditionInfo] = useState<any>(null);
   const [loadingInfo, setLoadingInfo] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'agent'>('overview');
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audioLoading, setAudioLoading] = useState(false);
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (query) {
@@ -118,6 +121,53 @@ Rules:
     setAgentLoading(false);
   };
 
+  const handleListen = async () => {
+    if (!conditionInfo) return;
+
+    if (isPlaying && currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      setIsPlaying(false);
+      setCurrentAudio(null);
+      return;
+    }
+
+    const voiceId = localStorage.getItem('askmedily_voice_id') || '21m00Tcm4TlvDq8ikWAM';
+    const speed = parseFloat(localStorage.getItem('askmedily_reading_speed') || '1');
+
+    const text = `
+      ${conditionInfo.name}.
+      ${conditionInfo.description}
+      Common symptoms include: ${conditionInfo.symptoms?.join(', ')}.
+      Commonly prescribed medications include: ${conditionInfo.commonly_prescribed_drugs?.join(', ')}.
+      ${conditionInfo.when_to_see_gp ? `When to see your GP: ${conditionInfo.when_to_see_gp}` : ''}
+      This information is for educational purposes only. Always consult your doctor or pharmacist.
+    `.trim();
+
+    setAudioLoading(true);
+    try {
+      const res = await fetch('/api/text-to-speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voiceId })
+      });
+      const data = await res.json();
+      if (data.audio) {
+        const audio = new Audio(`data:audio/mpeg;base64,${data.audio}`);
+        audio.playbackRate = speed;
+        audio.onended = () => { setIsPlaying(false); setCurrentAudio(null); };
+        audio.play();
+        setCurrentAudio(audio);
+        setIsPlaying(true);
+      } else {
+        alert('Voice reading is temporarily unavailable. Please try again later.');
+      }
+    } catch {
+      alert('Voice reading is temporarily unavailable. Please try again later.');
+    }
+    setAudioLoading(false);
+  };
+
   return (
     <div style={{ maxWidth: 760, margin: '0 auto', padding: '24px', minHeight: '100vh' }}>
       <a href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--muted)', textDecoration: 'none', fontSize: 14, marginBottom: 20 }}>
@@ -131,7 +181,28 @@ Rules:
             <Stethoscope size={24} color="var(--brand)" />
           </div>
           <div style={{ flex: 1 }}>
-            <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 4 }}>{query || 'Condition Search'}</h1>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 4 }}>{query || 'Condition Search'}</h1>
+              <button
+                onClick={handleListen}
+                disabled={audioLoading || loadingInfo}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  background: isPlaying ? '#FF4444' : 'var(--brand)',
+                  color: 'white', border: 'none', borderRadius: 10,
+                  padding: '10px 16px', fontSize: 14, fontWeight: 600,
+                  cursor: 'pointer', flexShrink: 0,
+                  opacity: (audioLoading || loadingInfo) ? 0.7 : 1
+                }}
+              >
+                {audioLoading
+                  ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Loading...</>
+                  : isPlaying
+                  ? <><Square size={16} /> Stop</>
+                  : <><Volume2 size={16} /> Listen</>
+                }
+              </button>
+            </div>
             {conditionInfo?.category && (
               <div style={{ display: 'inline-block', background: 'var(--brand-light)', color: 'var(--brand)', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>
                 {conditionInfo.category}
