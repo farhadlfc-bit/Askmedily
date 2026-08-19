@@ -1,297 +1,198 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { CheckCircle, Pill, ArrowLeft, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase';
-import { Pill, ArrowLeft, Volume2, User, CreditCard, Loader2, Play, Check } from 'lucide-react';
 
-const VOICE_OPTIONS = [
-  { id: 'Xb7hH8MSUJpSbSDYk0k2', name: 'Alice', description: 'Clear, engaging British female — ideal for education' },
-  { id: 'onwK4e9ZLuTAKqWW03F9', name: 'Daniel', description: 'Steady British broadcaster — professional and authoritative' },
-  { id: 'r3cuLnjnQ2BjA06ZloeU', name: 'Becky', description: 'Warm, approachable British female narrator' },
-  { id: '2styzLg7OSeuhPP6uQ26', name: 'Philip', description: 'Clear, measured British male — great for factual content' },
-  { id: 'wjZJDZGwI2sD6seofPVe', name: 'Nina', description: 'Refined British RP female — warm and articulate' },
-  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel', description: 'Calm, clear American female' },
-  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella', description: 'Soft, warm female' },
-  { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh', description: 'Deep, male' },
-  { id: 'yoZ06aMxZJJ28mfd3POQ', name: 'Sam', description: 'Raspy, young male' },
-];
-
-export default function Settings() {
+export default function Pricing() {
+  const [loading, setLoading] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'voice' | 'account' | 'subscription'>('voice');
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [selectedVoice, setSelectedVoice] = useState('21m00Tcm4TlvDq8ikWAM');
-  const [readingSpeed, setReadingSpeed] = useState(1);
-  const [previewLoading, setPreviewLoading] = useState<string | null>(null);
-  const [voiceSaved, setVoiceSaved] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
-  const [accountMessage, setAccountMessage] = useState('');
-  const [accountLoading, setAccountLoading] = useState(false);
-
-  const supabase = createClient();
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [isExpired, setIsExpired] = useState(false);
 
   useEffect(() => {
-    const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { window.location.href = '/login'; return; }
-      setUser(session.user);
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-      setProfile(profileData);
-      const savedVoice = localStorage.getItem('askmedily_voice_id');
-      const savedVoiceEnabled = localStorage.getItem('askmedily_voice_enabled');
-      const savedSpeed = localStorage.getItem('askmedily_reading_speed');
-      if (savedVoice) setSelectedVoice(savedVoice);
-      if (savedVoiceEnabled !== null) setVoiceEnabled(savedVoiceEnabled === 'true');
-      if (savedSpeed) setReadingSpeed(parseFloat(savedSpeed));
-      setLoading(false);
+    const getUser = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user || null);
+      if (user) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('plan, trial_ends_at')
+          .eq('id', user.id)
+          .single();
+        setProfile(profileData);
+      }
+      setCheckingAuth(false);
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('expired') === 'true') setIsExpired(true);
     };
-    init();
+    getUser();
   }, []);
 
-  const previewVoice = async (voiceId: string) => {
-    setPreviewLoading(voiceId);
+  const handleSubscribe = async (plan: 'basic' | 'premium') => {
+    if (!user) { window.location.href = '/login'; return; }
+    setLoading(plan);
     try {
-      const res = await fetch('/api/text-to-speech', {
+      const res = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: 'Hello, I am your AskMedily voice assistant. I will read medication information to you clearly and accurately.',
-          voiceId
-        })
+        body: JSON.stringify({ plan, userId: user.id, email: user.email })
       });
       const data = await res.json();
-      if (data.audio) {
-        const audio = new Audio(`data:audio/mpeg;base64,${data.audio}`);
-        audio.playbackRate = readingSpeed;
-        audio.play();
-      }
-    } catch {}
-    setPreviewLoading(null);
+      if (data.url) { window.location.href = data.url; }
+      else { alert('Something went wrong. Please try again.'); }
+    } catch { alert('Something went wrong. Please try again.'); }
+    setLoading(null);
   };
 
-  const saveVoiceSettings = () => {
-    localStorage.setItem('askmedily_voice_id', selectedVoice);
-    localStorage.setItem('askmedily_voice_enabled', voiceEnabled.toString());
-    localStorage.setItem('askmedily_reading_speed', readingSpeed.toString());
-    setVoiceSaved(true);
-    setTimeout(() => setVoiceSaved(false), 2000);
-  };
+  const isBasic = profile?.plan === 'basic';
+  const isPremium = profile?.plan === 'premium';
+  const isTrialActive = profile?.trial_ends_at && new Date() < new Date(profile.trial_ends_at) && !isBasic && !isPremium;
+  const isUpgrade = (isBasic || isTrialActive) && !isExpired;
 
-  const updatePassword = async () => {
-    if (!newPassword) { setAccountMessage('Please enter a new password'); return; }
-    setAccountLoading(true);
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) { setAccountMessage(error.message); }
-    else { setAccountMessage('Password updated successfully'); setNewPassword(''); }
-    setAccountLoading(false);
-  };
-
-  const deleteAccount = async () => {
-    if (!confirm('Are you sure you want to delete your account? This cannot be undone.')) return;
-    await supabase.auth.signOut();
-    window.location.href = '/';
-  };
-
-  const isSubscribed = () => profile?.plan === 'basic' || profile?.plan === 'premium';
-
-  if (loading) return (
+  // Loading state
+  if (checkingAuth) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: 40, height: 40, border: '3px solid var(--brand-light)', borderTopColor: 'var(--brand)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
     </div>
+  );
+
+  // Already Premium
+  if (isPremium) return (
+    <main style={{ minHeight: '100vh', background: 'var(--background)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ textAlign: 'center', padding: 40 }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+        <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>You're on Premium</h1>
+        <p style={{ color: 'var(--muted)', marginBottom: 24 }}>You already have full access to all AskMedily features.</p>
+        <a href="/dashboard" style={{ color: 'var(--brand)', fontWeight: 600, textDecoration: 'none' }}>← Back to dashboard</a>
+      </div>
+    </main>
   );
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--background)' }}>
       <nav style={{ background: 'white', borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 36, height: 36, background: 'var(--brand)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Pill size={20} color="white" />
+          <div style={{ width: 34, height: 34, background: 'var(--brand)', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Pill size={18} color="white" />
           </div>
-          <span style={{ fontWeight: 700, fontSize: 20 }}>AskMedily</span>
+          <span style={{ fontWeight: 700, fontSize: 18 }}>AskMedily</span>
         </div>
-        <span style={{ fontSize: 13, color: 'var(--muted)' }}>{user?.email}</span>
+        {user && <span style={{ fontSize: 13, color: 'var(--muted)' }}>Signed in as {user.email}</span>}
       </nav>
 
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px' }}>
-        <a href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--muted)', textDecoration: 'none', fontSize: 14, marginBottom: 28 }}>
-          <ArrowLeft size={16} /> Back to dashboard
+      {isExpired && (
+        <div style={{ background: '#FFF8F0', borderTop: '3px solid #FF9500', padding: '14px 32px', textAlign: 'center' }}>
+          <p style={{ fontSize: 15, color: '#FF9500', fontWeight: 600 }}>
+            ⏰ Your free trial has ended — choose a plan below to continue using AskMedily.
+          </p>
+        </div>
+      )}
+
+      <div style={{ maxWidth: isUpgrade ? 480 : 760, margin: '0 auto', padding: '60px 24px', textAlign: 'center' }}>
+        <a href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--muted)', textDecoration: 'none', fontSize: 14, marginBottom: 32 }}>
+          <ArrowLeft size={16} /> Back
         </a>
 
-        <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 24 }}>Settings</h1>
-
-        <div style={{ display: 'flex', gap: 4, background: 'white', borderRadius: 12, padding: 4, marginBottom: 24, border: '1px solid var(--border)' }}>
-          {[
-            { key: 'voice', label: '🔊 Voice' },
-            { key: 'account', label: '👤 Account' },
-            { key: 'subscription', label: '💳 Subscription' },
-          ].map(tab => (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key as any)} style={{
-              flex: 1, padding: '10px', borderRadius: 9, border: 'none', cursor: 'pointer',
-              fontSize: 14, fontWeight: 600, transition: 'all 0.2s',
-              background: activeTab === tab.key ? 'var(--brand)' : 'transparent',
-              color: activeTab === tab.key ? 'white' : 'var(--muted)'
-            }}>
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {activeTab === 'voice' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Voice agent</h2>
-                  <p style={{ fontSize: 13, color: 'var(--muted)' }}>Read medication information aloud on drug pages</p>
-                </div>
-                <button onClick={() => setVoiceEnabled(!voiceEnabled)} style={{
-                  width: 48, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer',
-                  background: voiceEnabled ? 'var(--brand)' : 'var(--border)', position: 'relative', transition: 'background 0.2s'
-                }}>
-                  <div style={{
-                    width: 20, height: 20, borderRadius: '50%', background: 'white',
-                    position: 'absolute', top: 3, left: voiceEnabled ? 25 : 3, transition: 'left 0.2s'
-                  }} />
-                </button>
+        {/* Upgrade mode — Basic or trial user upgrading to Premium */}
+        {isUpgrade ? (
+          <>
+            <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 8 }}>Upgrade to Premium</h1>
+            <p style={{ color: 'var(--muted)', marginBottom: 32 }}>Get full access to the AI Condition Agent, voice reading and more.</p>
+            <div style={{ background: 'var(--brand)', borderRadius: 20, padding: 32, textAlign: 'left', color: 'white', position: 'relative' }}>
+              <div style={{ position: 'absolute', top: -12, right: 20, background: 'var(--accent)', color: 'white', padding: '4px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
+                Most Popular
               </div>
-            </div>
-
-            {voiceEnabled && (
-              <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
-                <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Choose a voice</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>Click play to preview before selecting</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {VOICE_OPTIONS.map(voice => (
-                    <div key={voice.id} onClick={() => setSelectedVoice(voice.id)} style={{
-                      display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
-                      borderRadius: 10, border: `2px solid ${selectedVoice === voice.id ? 'var(--brand)' : 'var(--border)'}`,
-                      background: selectedVoice === voice.id ? 'var(--brand-light)' : 'var(--background)',
-                      cursor: 'pointer', transition: 'all 0.2s'
-                    }}>
-                      <button onClick={(e) => { e.stopPropagation(); previewVoice(voice.id); }} style={{
-                        width: 32, height: 32, borderRadius: '50%', border: 'none',
-                        background: 'var(--brand)', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                      }}>
-                        {previewLoading === voice.id
-                          ? <Loader2 size={14} color="white" style={{ animation: 'spin 1s linear infinite' }} />
-                          : <Play size={14} color="white" />}
-                      </button>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ fontWeight: 600, fontSize: 14 }}>{voice.name}</p>
-                        <p style={{ fontSize: 12, color: 'var(--muted)' }}>{voice.description}</p>
-                      </div>
-                      {selectedVoice === voice.id && <Check size={16} color="var(--brand)" />}
-                    </div>
-                  ))}
-                </div>
+              <p style={{ fontSize: 14, fontWeight: 600, opacity: 0.8, marginBottom: 8 }}>Premium</p>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 6 }}>
+                <span style={{ fontSize: 40, fontWeight: 800 }}>£9.99</span>
+                <span style={{ opacity: 0.7 }}>/month</span>
               </div>
-            )}
-
-            {voiceEnabled && (
-              <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
-                <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Reading speed</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>Current: {readingSpeed}x</p>
-                <input type="range" min="0.5" max="2" step="0.25" value={readingSpeed}
-                  onChange={(e) => setReadingSpeed(parseFloat(e.target.value))}
-                  style={{ width: '100%', accentColor: 'var(--brand)' }}
-                />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
-                  <span>0.5x (Slow)</span><span>1x (Normal)</span><span>2x (Fast)</span>
-                </div>
-              </div>
-            )}
-
-            <button onClick={saveVoiceSettings} style={{
-              background: 'var(--brand)', color: 'white', border: 'none', borderRadius: 12,
-              padding: '14px', fontSize: 15, fontWeight: 700, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
-            }}>
-              {voiceSaved ? <><Check size={16} /> Saved!</> : 'Save voice settings'}
-            </button>
-          </div>
-        )}
-
-        {activeTab === 'account' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Account details</h2>
-              <div style={{ padding: '12px 16px', background: 'var(--background)', borderRadius: 10, marginBottom: 16 }}>
-                <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>EMAIL ADDRESS</p>
-                <p style={{ fontSize: 15, fontWeight: 600 }}>{user?.email}</p>
-              </div>
-            </div>
-
-            <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Change password</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
-                  placeholder="New password (min. 8 characters)"
-                  style={{ width: '100%', padding: '12px 14px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 15, outline: 'none', background: 'var(--background)', boxSizing: 'border-box' }}
-                />
-                {accountMessage && (
-                  <p style={{ fontSize: 13, color: accountMessage.includes('success') ? 'var(--accent)' : 'var(--danger)' }}>{accountMessage}</p>
-                )}
-                <button onClick={updatePassword} disabled={accountLoading} style={{
-                  background: 'var(--brand)', color: 'white', border: 'none', borderRadius: 10,
-                  padding: '12px', fontSize: 14, fontWeight: 700, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: accountLoading ? 0.7 : 1
-                }}>
-                  {accountLoading ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Updating...</> : 'Update password'}
-                </button>
-              </div>
-            </div>
-
-            <div style={{ background: '#FFF0F0', borderRadius: 16, padding: 24, border: '1px solid #FFD4D4' }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 6, color: 'var(--danger)' }}>Delete account</h2>
-              <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>This will permanently delete your account and all your data. This cannot be undone.</p>
-              <button onClick={deleteAccount} style={{
-                background: 'var(--danger)', color: 'white', border: 'none', borderRadius: 10,
-                padding: '12px 20px', fontSize: 14, fontWeight: 700, cursor: 'pointer'
-              }}>
-                Delete my account
+              <p style={{ fontSize: 12, opacity: 0.7, marginBottom: 24 }}>billed monthly, cancel anytime</p>
+              <ul style={{ listStyle: 'none', marginBottom: 28, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {['Everything in Basic', 'AI Condition Agent', 'Voice agent (listen to drug info)', 'Personalised medication history', 'Priority support', 'Early access to new features'].map((f, i) => (
+                  <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14 }}>
+                    <CheckCircle size={16} style={{ marginTop: 2, flexShrink: 0, color: 'white' }} />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => handleSubscribe('premium')}
+                disabled={loading === 'premium'}
+                style={{ width: '100%', textAlign: 'center', background: 'white', color: 'var(--brand)', padding: '13px', borderRadius: 10, border: 'none', fontWeight: 700, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: loading ? 0.7 : 1 }}
+              >
+                {loading === 'premium' ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Processing...</> : 'Upgrade to Premium — £9.99/mo'}
               </button>
             </div>
-          </div>
-        )}
-
-        {activeTab === 'subscription' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Current plan</h2>
-              <div style={{ padding: '16px', background: isSubscribed() ? 'var(--brand-light)' : 'var(--background)', borderRadius: 10, marginBottom: 16, border: `1px solid ${isSubscribed() ? 'var(--brand)' : 'var(--border)'}` }}>
-                <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>PLAN</p>
-                <p style={{ fontSize: 18, fontWeight: 800, color: isSubscribed() ? 'var(--brand)' : 'var(--foreground)', textTransform: 'capitalize' }}>
-                  {profile?.plan || 'Free Trial'}
-                </p>
-                {profile?.plan === 'basic' && <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>£4.99/month</p>}
-                {profile?.plan === 'premium' && <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>£9.99/month</p>}
-              </div>
-              {!isSubscribed() && (
-                <a href="/pricing" style={{ display: 'block', textAlign: 'center', background: 'var(--brand)', color: 'white', padding: '13px', borderRadius: 10, textDecoration: 'none', fontWeight: 700, fontSize: 15 }}>
-                  Upgrade plan
-                </a>
-              )}
-              {profile?.plan === 'basic' && (
-                <a href="/pricing" style={{ display: 'block', textAlign: 'center', background: 'var(--brand)', color: 'white', padding: '13px', borderRadius: 10, textDecoration: 'none', fontWeight: 700, fontSize: 15 }}>
-                  Upgrade to Premium
-                </a>
-              )}
-            </div>
-            {isSubscribed() && (
-              <div style={{ background: 'var(--background)', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
-                <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Manage subscription</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>To cancel or change your subscription, please contact us.</p>
-                <a href="mailto:support@askmedily.com" style={{ color: 'var(--brand)', fontSize: 14, fontWeight: 600 }}>Contact support →</a>
+          </>
+        ) : (
+          <>
+            <h1 style={{ fontSize: 36, fontWeight: 800, marginBottom: 8 }}>Simple, honest pricing</h1>
+            <p style={{ color: 'var(--muted)', marginBottom: 12 }}>
+              {isExpired ? 'Your trial has ended. Subscribe to keep access.' : 'Start with a 2-day free trial. No credit card required until trial ends.'}
+            </p>
+            {!isExpired && (
+              <div style={{ display: 'inline-block', background: '#E8FBF5', color: '#00875A', padding: '6px 16px', borderRadius: 20, fontSize: 13, fontWeight: 600, marginBottom: 40 }}>
+                🎉 2-day free trial on all plans
               </div>
             )}
-          </div>
+            {!user && (
+              <div style={{ background: 'var(--brand-light)', borderRadius: 12, padding: '14px 20px', marginBottom: 24, fontSize: 14, color: 'var(--brand)' }}>
+                <a href="/login" style={{ color: 'var(--brand)', fontWeight: 700, textDecoration: 'none' }}>Sign in or create an account</a> to start your free trial
+              </div>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              {[
+                {
+                  plan: 'basic' as const,
+                  name: 'Basic', price: '£4.99',
+                  features: ['Drug search & plain English pages', 'Side effects ranked by frequency', 'Photo search', 'Voice search', 'NHS & FDA sourced data'],
+                  highlight: false
+                },
+                {
+                  plan: 'premium' as const,
+                  name: 'Premium', price: '£9.99',
+                  features: ['Everything in Basic', 'AI Condition Agent', 'Voice agent (listen to drug info)', 'Personalised medication history', 'Priority support', 'Early access to new features'],
+                  highlight: true
+                }
+              ].map((item) => (
+                <div key={item.plan} style={{ background: item.highlight ? 'var(--brand)' : 'white', color: item.highlight ? 'white' : 'var(--foreground)', borderRadius: 20, padding: 32, border: '1px solid var(--border)', textAlign: 'left', position: 'relative' }}>
+                  {item.highlight && (
+                    <div style={{ position: 'absolute', top: -12, right: 20, background: 'var(--accent)', color: 'white', padding: '4px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>Most Popular</div>
+                  )}
+                  <p style={{ fontSize: 14, fontWeight: 600, opacity: 0.8, marginBottom: 8 }}>{item.name}</p>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 6 }}>
+                    <span style={{ fontSize: 40, fontWeight: 800 }}>{item.price}</span>
+                    <span style={{ opacity: 0.7 }}>/month</span>
+                  </div>
+                  {!isExpired && <p style={{ fontSize: 12, opacity: 0.7, marginBottom: 24 }}>after 2-day free trial</p>}
+                  {isExpired && <p style={{ fontSize: 12, opacity: 0.7, marginBottom: 24 }}>billed monthly, cancel anytime</p>}
+                  <ul style={{ listStyle: 'none', marginBottom: 28, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {item.features.map((f, j) => (
+                      <li key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14 }}>
+                        <CheckCircle size={16} style={{ marginTop: 2, flexShrink: 0, color: item.highlight ? 'white' : 'var(--accent)' }} />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => handleSubscribe(item.plan)}
+                    disabled={loading === item.plan}
+                    style={{ width: '100%', textAlign: 'center', background: item.highlight ? 'white' : 'var(--brand)', color: item.highlight ? 'var(--brand)' : 'white', padding: '13px', borderRadius: 10, border: 'none', fontWeight: 700, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: loading ? 0.7 : 1 }}
+                  >
+                    {loading === item.plan
+                      ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Processing...</>
+                      : user ? (isExpired ? 'Subscribe now' : 'Start free trial') : 'Sign in to start'
+                    }
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
         )}
+        <p style={{ marginTop: 32, fontSize: 13, color: 'var(--muted)' }}>Cancel anytime. No hidden fees. Secure payments via Stripe.</p>
       </div>
     </main>
   );
