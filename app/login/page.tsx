@@ -29,27 +29,28 @@ export default function LoginPage() {
       if (error) { setError(error.message); }
       else { setMessage('Check your email to confirm your account, then come back to sign in.'); }
     } else {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-if (error) { setError(error.message); }
-else {
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('plan, trial_ends_at, created_at')
-    .eq('id', data.user.id)
-    .single();
-  
-  const isSubscribed = profile?.plan === 'basic' || profile?.plan === 'premium';
-  const createdAt = new Date(profile?.created_at);
-  const isNewUser = (Date.now() - createdAt.getTime()) < 300000; // 5 minutes
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) { setError(error.message); }
+      else {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('plan, trial_ends_at, created_at')
+          .eq('id', data.user.id)
+          .single();
 
-  if (isSubscribed) {
-    window.location.href = '/dashboard';
-  } else if (isNewUser) {
-    window.location.href = '/pricing?new=true';
-  } else {
-    window.location.href = '/dashboard';
-  }
-}
+        const isSubscribed = profile?.plan === 'basic' || profile?.plan === 'premium';
+        const createdAt = new Date(profile?.created_at);
+        const isNewUser = (Date.now() - createdAt.getTime()) < 300000;
+
+        if (isSubscribed) {
+          window.location.href = '/dashboard';
+        } else if (isNewUser) {
+          window.location.href = '/pricing?new=true';
+        } else {
+          window.location.href = '/dashboard';
+        }
+      }
+    }
     setLoading(false);
   };
 
@@ -71,7 +72,6 @@ else {
   return (
     <main style={{ minHeight: '100vh', background: 'var(--background)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ width: '100%', maxWidth: 420 }}>
-        {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ width: 52, height: 52, background: 'var(--brand)', borderRadius: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
             <Pill size={26} color="white" />
@@ -80,22 +80,19 @@ else {
           <p style={{ color: 'var(--muted)', fontSize: 14, marginTop: 4 }}>Understand your medication, finally.</p>
         </div>
 
-        {/* Card */}
         <div style={{ background: 'white', borderRadius: 20, padding: 32, border: '1px solid var(--border)', boxShadow: '0 4px 24px rgba(0,87,255,0.06)' }}>
 
-          {/* Trial Banner */}
           {mode === 'signup' && (
             <div style={{ background: 'var(--brand-light)', borderRadius: 10, padding: '10px 14px', marginBottom: 20, textAlign: 'center' }}>
               <p style={{ fontSize: 13, color: 'var(--brand)', fontWeight: 600 }}>🎉 2-day free trial — no card required</p>
             </div>
           )}
 
-          {/* Google Button */}
           <button onClick={handleGoogleLogin} disabled={googleLoading} style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
             background: 'white', border: '1px solid var(--border)', borderRadius: 10,
             padding: '12px', fontSize: 15, fontWeight: 600, cursor: 'pointer',
-            marginBottom: 16, opacity: googleLoading ? 0.7 : 1, transition: 'all 0.2s'
+            marginBottom: 16, opacity: googleLoading ? 0.7 : 1
           }}>
             {googleLoading ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : (
               <svg width="18" height="18" viewBox="0 0 18 18">
@@ -108,14 +105,12 @@ else {
             {googleLoading ? 'Connecting...' : 'Continue with Google'}
           </button>
 
-          {/* Divider */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
             <span style={{ fontSize: 13, color: 'var(--muted)' }}>or</span>
             <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
           </div>
 
-          {/* Toggle */}
           <div style={{ display: 'flex', background: 'var(--background)', borderRadius: 10, padding: 4, marginBottom: 20 }}>
             {(['signup', 'login'] as const).map(m => (
               <button key={m} onClick={() => setMode(m)} style={{
@@ -130,12 +125,10 @@ else {
             ))}
           </div>
 
-          {/* Fields */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
               <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', display: 'block', marginBottom: 6 }}>Email</label>
-              <input
-                type="email" value={email} onChange={e => setEmail(e.target.value)}
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 style={{ width: '100%', padding: '12px 14px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 15, outline: 'none', background: 'var(--background)', boxSizing: 'border-box' }}
               />
@@ -143,8 +136,7 @@ else {
             <div>
               <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', display: 'block', marginBottom: 6 }}>Password</label>
               <div style={{ position: 'relative' }}>
-                <input
-                  type={showPassword ? 'text' : 'password'} value={password}
+                <input type={showPassword ? 'text' : 'password'} value={password}
                   onChange={e => setPassword(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleAuth()}
                   placeholder="Min. 8 characters"
