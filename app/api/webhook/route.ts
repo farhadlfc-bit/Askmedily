@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!process.env.STRIPE_WEBHOOK_SECRET) {
-    return NextResponse.json({ error: 'No webhook secret configured' }, { status: 500 });
+    return NextResponse.json({ error: 'No webhook secret' }, { status: 500 });
   }
 
   let event: Stripe.Event;
@@ -26,23 +26,27 @@ export async function POST(req: NextRequest) {
       process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err: any) {
-    console.error('Webhook signature error:', err.message);
     return NextResponse.json({ error: `Webhook error: ${err.message}` }, { status: 400 });
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
   const updateProfile = async (userId: string, data: object) => {
-    await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
+    const res = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
       method: 'PATCH',
       headers: {
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
+        'apikey': serviceRoleKey,
+        'Authorization': `Bearer ${serviceRoleKey}`,
         'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
       },
       body: JSON.stringify(data),
     });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error('Profile update error:', err);
+    }
   };
 
   switch (event.type) {
@@ -50,7 +54,8 @@ export async function POST(req: NextRequest) {
       const session = event.data.object as Stripe.CheckoutSession;
       const userId = session.metadata?.userId;
       const plan = session.metadata?.plan;
-      if (userId) {
+      console.log('Checkout completed:', { userId, plan });
+      if (userId && plan) {
         await updateProfile(userId, {
           plan,
           subscription_id: session.subscription,
