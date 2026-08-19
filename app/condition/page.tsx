@@ -24,38 +24,34 @@ function ConditionPageContent() {
   const [audioLoading, setAudioLoading] = useState(false);
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [isPremium, setIsPremium] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { window.location.href = '/login'; return; }
-
       const { data: profile } = await supabase
         .from('profiles')
         .select('plan, trial_ends_at')
         .eq('id', session.user.id)
         .single();
-
       if (profile) {
         const isSubscribed = profile.plan === 'basic' || profile.plan === 'premium';
         const trialActive = profile.trial_ends_at && new Date() < new Date(profile.trial_ends_at);
-        if (!isSubscribed && !trialActive) {
-          window.location.href = '/pricing?expired=true';
-          return;
-        }
+        if (!isSubscribed && !trialActive) { window.location.href = '/pricing?expired=true'; return; }
         setIsPremium(profile.plan === 'premium');
       }
+      setAuthChecked(true);
     };
     checkAuth();
   }, []);
 
   useEffect(() => {
-    if (query) {
+    if (authChecked && query) {
       fetchConditionInfo(query);
-      startAgent(query);
     }
-  }, [query]);
+  }, [authChecked, query]);
 
   const fetchConditionInfo = async (condition: string) => {
     setLoadingInfo(true);
@@ -74,28 +70,19 @@ function ConditionPageContent() {
   };
 
   const startAgent = async (condition: string) => {
+    if (!isPremium) return;
     setAgentLoading(true);
     const systemPrompt = `You are MedilyAgent, a friendly UK pharmacy expert. The user has been diagnosed with or is asking about: ${condition}.
-
 Ask ONE question at a time to personalise their medication information:
 1. Which country are they in?
 2. Have they been prescribed anything yet by their GP?
 3. How long have they had this condition?
 4. Any allergies to medications?
-
-After 3-4 questions, tell them which medications are most commonly prescribed in the UK for their situation, then offer to show them the plain English drug page for each one.
-
+After 3-4 questions, tell them which medications are most commonly prescribed in the UK for their situation.
 Format drug suggestions as JSON at the end: {"drugLinks": [{"name": "Drug Name", "url": "/drug?q=Drug Name"}]}
-
-Rules:
-- ONE question at a time
-- Plain English only
-- Always say "your doctor may prescribe" not "you should take"
-- Keep each message to 2-3 sentences maximum
-- Be warm and reassuring`;
+Rules: ONE question at a time, plain English only, always say "your doctor may prescribe", keep messages to 2-3 sentences, be warm and reassuring.`;
 
     const history = [{ role: 'user', content: `I want to understand more about: ${condition}` }];
-
     try {
       const res = await fetch('/api/agent', {
         method: 'POST',
@@ -119,7 +106,7 @@ Rules:
   };
 
   const sendMessage = async () => {
-    if (!input.trim() || agentLoading) return;
+    if (!input.trim() || agentLoading || !isPremium) return;
     const userMessage = input.trim();
     setInput('');
     const newMessages = [...messages, { role: 'user' as const, content: userMessage }];
@@ -150,14 +137,12 @@ Rules:
 
   const handleListen = async () => {
     if (!conditionInfo) return;
-
     if (!isPremium) {
       if (confirm('Voice reading is a Premium feature — £9.99/month. Upgrade now?')) {
         window.location.href = '/pricing?upgrade=true';
       }
       return;
     }
-
     if (isPlaying && currentAudio) {
       currentAudio.pause();
       currentAudio.currentTime = 0;
@@ -165,19 +150,9 @@ Rules:
       setCurrentAudio(null);
       return;
     }
-
     const voiceId = localStorage.getItem('askmedily_voice_id') || '21m00Tcm4TlvDq8ikWAM';
     const speed = parseFloat(localStorage.getItem('askmedily_reading_speed') || '1');
-
-    const text = `
-      ${conditionInfo.name}.
-      ${conditionInfo.description}
-      Common symptoms include: ${conditionInfo.symptoms?.join(', ')}.
-      Commonly prescribed medications include: ${conditionInfo.commonly_prescribed_drugs?.join(', ')}.
-      ${conditionInfo.when_to_see_gp ? `When to see your GP: ${conditionInfo.when_to_see_gp}` : ''}
-      This information is for educational purposes only. Always consult your doctor or pharmacist.
-    `.trim();
-
+    const text = `${conditionInfo.name}. ${conditionInfo.description} Common symptoms include: ${conditionInfo.symptoms?.join(', ')}. Commonly prescribed medications include: ${conditionInfo.commonly_prescribed_drugs?.join(', ')}. ${conditionInfo.when_to_see_gp ? `When to see your GP: ${conditionInfo.when_to_see_gp}` : ''} This information is for educational purposes only.`.trim();
     setAudioLoading(true);
     try {
       const res = await fetch('/api/text-to-speech', {
@@ -202,6 +177,12 @@ Rules:
     setAudioLoading(false);
   };
 
+  if (!authChecked) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 40, height: 40, border: '3px solid var(--brand-light)', borderTopColor: 'var(--brand)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+    </div>
+  );
+
   return (
     <div style={{ maxWidth: 760, margin: '0 auto', padding: '24px', minHeight: '100vh' }}>
       <a href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--muted)', textDecoration: 'none', fontSize: 14, marginBottom: 20 }}>
@@ -217,27 +198,18 @@ Rules:
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
               <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 4 }}>{query || 'Condition Search'}</h1>
-              <button
-                onClick={handleListen}
-                disabled={audioLoading || loadingInfo}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  background: isPlaying ? '#FF4444' : isPremium ? 'var(--brand)' : 'var(--background)',
-                  color: isPremium ? 'white' : 'var(--muted)',
-                  border: isPremium ? 'none' : '1px solid var(--border)',
-                  borderRadius: 10, padding: '10px 16px', fontSize: 14, fontWeight: 600,
-                  cursor: 'pointer', flexShrink: 0,
-                  opacity: (audioLoading || loadingInfo) ? 0.7 : 1
-                }}
-              >
-                {audioLoading
-                  ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Loading...</>
-                  : isPlaying
-                  ? <><Square size={16} /> Stop</>
-                  : isPremium
-                  ? <><Volume2 size={16} /> Listen</>
-                  : <><Lock size={16} /> Premium</>
-                }
+              <button onClick={handleListen} disabled={audioLoading || loadingInfo} style={{
+                display: 'flex', alignItems: 'center', gap: 7,
+                background: isPlaying ? '#EF4444' : isPremium ? 'var(--brand)' : 'white',
+                color: isPremium || isPlaying ? 'white' : 'var(--muted)',
+                border: isPremium ? 'none' : '1px solid var(--border)',
+                borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 600,
+                cursor: 'pointer', flexShrink: 0, opacity: (audioLoading || loadingInfo) ? 0.7 : 1
+              }}>
+                {audioLoading ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Loading...</>
+                  : isPlaying ? <><Square size={15} /> Stop</>
+                  : isPremium ? <><Volume2 size={15} /> Listen</>
+                  : <><Lock size={15} /> Unlock Voice</>}
               </button>
             </div>
             {conditionInfo?.category && (
@@ -254,30 +226,28 @@ Rules:
         )}
       </div>
 
-      {/* Premium upsell for voice */}
-      {!isPremium && (
-        <div style={{ background: 'var(--brand-light)', borderRadius: 12, padding: '12px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Volume2 size={16} color="var(--brand)" />
-            <p style={{ fontSize: 13, color: 'var(--brand)', fontWeight: 600 }}>Want this page read aloud? Upgrade to Premium.</p>
-          </div>
-          <a href="/pricing?upgrade=true" style={{ background: 'var(--brand)', color: 'white', padding: '6px 14px', borderRadius: 8, textDecoration: 'none', fontSize: 13, fontWeight: 700 }}>
-            Upgrade →
-          </a>
-        </div>
-      )}
-
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 4, background: 'white', borderRadius: 12, padding: 4, marginBottom: 16, border: '1px solid var(--border)' }}>
         {[
           { key: 'overview', label: '📋 Condition Overview' },
-          { key: 'agent', label: '🤖 Ask MedilyAgent' }
+          { key: 'agent', label: isPremium ? '🤖 Ask MedilyAgent' : '🔒 MedilyAgent — Premium' }
         ].map(tab => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key as any)} style={{
+          <button key={tab.key} onClick={() => {
+            if (tab.key === 'agent' && !isPremium) {
+              if (confirm('MedilyAgent is a Premium feature — £9.99/month. Upgrade now?')) {
+                window.location.href = '/pricing?upgrade=true';
+              }
+              return;
+            }
+            setActiveTab(tab.key as any);
+            if (tab.key === 'agent' && isPremium && messages.length === 0) {
+              startAgent(query);
+            }
+          }} style={{
             flex: 1, padding: '10px', borderRadius: 9, border: 'none', cursor: 'pointer',
             fontSize: 14, fontWeight: 600, transition: 'all 0.2s',
             background: activeTab === tab.key ? 'var(--brand)' : 'transparent',
-            color: activeTab === tab.key ? 'white' : 'var(--muted)'
+            color: activeTab === tab.key ? 'white' : tab.key === 'agent' && !isPremium ? 'var(--muted)' : 'var(--muted)'
           }}>
             {tab.label}
           </button>
@@ -343,12 +313,25 @@ Rules:
               )}
 
               {conditionInfo.when_to_see_gp && (
-                <div style={{ background: '#FFF8F0', borderRadius: 16, padding: 24, border: '1px solid #FFD4A3' }}>
+                <div style={{ background: '#FFFBF0', borderRadius: 16, padding: 24, border: '1px solid #FDE68A' }}>
                   <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
-                    <AlertCircle size={18} color="#FF9500" />
+                    <AlertCircle size={18} color="#D97706" />
                     <h2 style={{ fontSize: 16, fontWeight: 700 }}>When to see your GP</h2>
                   </div>
                   <p style={{ fontSize: 14, lineHeight: 1.7 }}>{conditionInfo.when_to_see_gp}</p>
+                </div>
+              )}
+
+              {/* Premium upsell for agent */}
+              {!isPremium && (
+                <div style={{ background: 'var(--brand-light)', borderRadius: 12, padding: '16px 20px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--brand)', marginBottom: 2 }}>🤖 Want personalised medication guidance?</p>
+                    <p style={{ fontSize: 13, color: 'var(--muted)' }}>MedilyAgent asks you questions and guides you to the right medications. Premium feature.</p>
+                  </div>
+                  <a href="/pricing?upgrade=true" style={{ background: 'var(--brand)', color: 'white', padding: '8px 16px', borderRadius: 8, textDecoration: 'none', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    Upgrade →
+                  </a>
                 </div>
               )}
             </>
@@ -360,8 +343,8 @@ Rules:
         </div>
       )}
 
-      {/* Agent Tab */}
-      {activeTab === 'agent' && (
+      {/* Agent Tab — Premium only */}
+      {activeTab === 'agent' && isPremium && (
         <div style={{ background: 'white', borderRadius: 16, border: '1px solid var(--border)', overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ width: 36, height: 36, background: 'var(--brand-light)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
