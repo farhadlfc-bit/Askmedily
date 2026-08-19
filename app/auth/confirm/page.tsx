@@ -6,43 +6,32 @@ import { Loader2 } from 'lucide-react';
 export default function AuthConfirm() {
   useEffect(() => {
     const supabase = createClient();
-
     const check = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         window.location.href = '/login';
         return;
       }
-
       const { data: profile } = await supabase
         .from('profiles')
         .select('plan, trial_ends_at, created_at')
         .eq('id', session.user.id)
         .single();
-
       if (!profile) {
-        window.location.href = '/pricing';
+        window.location.href = '/pricing?new=true';
         return;
       }
-
       const isSubscribed = profile.plan === 'basic' || profile.plan === 'premium';
-
-      // Check if this is a brand new user (created in last 60 seconds)
       const createdAt = new Date(profile.created_at);
       const isNewUser = (Date.now() - createdAt.getTime()) < 60000;
-
       if (isSubscribed) {
-        // Existing subscriber — go straight to dashboard
         window.location.href = '/dashboard';
       } else if (isNewUser) {
-        // New user — show pricing first
-        window.location.href = '/pricing';
+        window.location.href = '/pricing?new=true';
       } else {
-        // Returning user with active trial — go to dashboard
         window.location.href = '/dashboard';
       }
     };
-
     setTimeout(check, 500);
   }, []);
 
