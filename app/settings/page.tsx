@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase';
-import { Pill, ArrowLeft, Loader2, Play, Check, X } from 'lucide-react';
+import { Pill, ArrowLeft, Loader2, Play, Check } from 'lucide-react';
 
 const VOICE_OPTIONS = [
   { id: 'Xb7hH8MSUJpSbSDYk0k2', name: 'Alice', description: 'Clear, engaging British female' },
@@ -19,7 +19,8 @@ export default function Settings() {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'voice' | 'account' | 'subscription'>('voice');
+  const [isPremium, setIsPremium] = useState(false);
+  const [activeTab, setActiveTab] = useState<'voice' | 'account' | 'subscription'>('account');
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [selectedVoice, setSelectedVoice] = useState('21m00Tcm4TlvDq8ikWAM');
   const [readingSpeed, setReadingSpeed] = useState(1);
@@ -42,6 +43,10 @@ export default function Settings() {
         .eq('id', session.user.id)
         .single();
       setProfile(profileData);
+      const premium = profileData?.plan === 'premium';
+      setIsPremium(premium);
+      if (premium) setActiveTab('voice');
+
       const savedVoice = localStorage.getItem('askmedily_voice_id');
       const savedVoiceEnabled = localStorage.getItem('askmedily_voice_enabled');
       const savedSpeed = localStorage.getItem('askmedily_reading_speed');
@@ -105,6 +110,12 @@ export default function Settings() {
     </div>
   );
 
+  const tabs = [
+    ...(isPremium ? [{ key: 'voice', label: '🔊 Voice' }] : []),
+    { key: 'account', label: '👤 Account' },
+    { key: 'subscription', label: '💳 Subscription' },
+  ];
+
   return (
     <main style={{ minHeight: '100vh', background: 'var(--background)' }}>
       <nav style={{ background: 'white', borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -125,11 +136,7 @@ export default function Settings() {
         <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 24 }}>Settings</h1>
 
         <div style={{ display: 'flex', gap: 4, background: 'white', borderRadius: 12, padding: 4, marginBottom: 24, border: '1px solid var(--border)' }}>
-          {[
-            { key: 'voice', label: '🔊 Voice' },
-            { key: 'account', label: '👤 Account' },
-            { key: 'subscription', label: '💳 Subscription' },
-          ].map(tab => (
+          {tabs.map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key as any)} style={{
               flex: 1, padding: '10px', borderRadius: 9, border: 'none', cursor: 'pointer',
               fontSize: 14, fontWeight: 600, transition: 'all 0.2s',
@@ -141,8 +148,8 @@ export default function Settings() {
           ))}
         </div>
 
-        {/* Voice Tab */}
-        {activeTab === 'voice' && (
+        {/* Voice Tab — Premium only */}
+        {activeTab === 'voice' && isPremium && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -220,7 +227,7 @@ export default function Settings() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
               <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Account details</h2>
-              <div style={{ padding: '12px 16px', background: 'var(--background)', borderRadius: 10, marginBottom: 16 }}>
+              <div style={{ padding: '12px 16px', background: 'var(--background)', borderRadius: 10 }}>
                 <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>EMAIL ADDRESS</p>
                 <p style={{ fontSize: 15, fontWeight: 600 }}>{user?.email}</p>
               </div>
@@ -266,13 +273,15 @@ export default function Settings() {
               <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Current plan</h2>
               <div style={{ padding: '16px', background: isSubscribed() ? 'var(--brand-light)' : 'var(--background)', borderRadius: 10, marginBottom: 16, border: `1px solid ${isSubscribed() ? 'var(--brand)' : 'var(--border)'}` }}>
                 <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>PLAN</p>
-                <p style={{ fontSize: 18, fontWeight: 800, color: isSubscribed() ? 'var(--brand)' : 'var(--foreground)', textTransform: 'capitalize' }}>
-                  {profile?.plan === 'premium' ? 'Premium — £9.99/month' : profile?.plan === 'basic' ? 'Basic — £4.99/month' : 'Free Trial'}
+                <p style={{ fontSize: 18, fontWeight: 800, color: isSubscribed() ? 'var(--brand)' : 'var(--foreground)' }}>
+                  {profile?.plan === 'premium' ? 'Premium — £9.99/month'
+                    : profile?.plan === 'basic' ? 'Basic — £4.99/month'
+                    : 'Free Trial'}
                 </p>
               </div>
 
               {profile?.plan === 'basic' && (
-                <a href="/pricing" style={{ display: 'block', textAlign: 'center', background: 'var(--brand)', color: 'white', padding: '13px', borderRadius: 10, textDecoration: 'none', fontWeight: 700, fontSize: 15, marginBottom: 12 }}>
+                <a href="/pricing?upgrade=true" style={{ display: 'block', textAlign: 'center', background: 'var(--brand)', color: 'white', padding: '13px', borderRadius: 10, textDecoration: 'none', fontWeight: 700, fontSize: 15, marginBottom: 12 }}>
                   Upgrade to Premium — £9.99/month
                 </a>
               )}
