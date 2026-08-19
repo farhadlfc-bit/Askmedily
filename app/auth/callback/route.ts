@@ -5,7 +5,6 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/dashboard'
 
   if (code) {
     const cookieStore = await cookies()
@@ -25,13 +24,13 @@ export async function GET(request: NextRequest) {
         },
       }
     )
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    
+    if (!error && data.session) {
+      // Redirect to an intermediate page that confirms session then goes to dashboard
+      return NextResponse.redirect(`${origin}/auth/confirm`)
     }
-    console.error('Auth callback error:', error)
   }
 
-  // If something went wrong, redirect to login with error
   return NextResponse.redirect(`${origin}/login?error=auth_failed`)
 }
