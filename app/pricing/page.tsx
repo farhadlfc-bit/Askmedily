@@ -9,13 +9,17 @@ export default function Pricing() {
   const [profile, setProfile] = useState<any>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [isExpired, setIsExpired] = useState(false);
+  const [forceUpgrade, setForceUpgrade] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('expired') === 'true') setIsExpired(true);
+    if (params.get('upgrade') === 'true') setForceUpgrade(true);
+
     const getUser = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user || null);
-
       if (user) {
         const { data: profileData } = await supabase
           .from('profiles')
@@ -24,19 +28,13 @@ export default function Pricing() {
           .single();
         setProfile(profileData);
       }
-
       setCheckingAuth(false);
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('expired') === 'true') setIsExpired(true);
     };
     getUser();
   }, []);
 
   const handleSubscribe = async (plan: 'basic' | 'premium') => {
-    if (!user) {
-      window.location.href = '/login';
-      return;
-    }
+    if (!user) { window.location.href = '/login'; return; }
     setLoading(plan);
     try {
       const res = await fetch('/api/create-checkout', {
@@ -45,35 +43,35 @@ export default function Pricing() {
         body: JSON.stringify({ plan, userId: user.id, email: user.email })
       });
       const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        alert('Something went wrong. Please try again.');
-      }
-    } catch {
-      alert('Something went wrong. Please try again.');
-    }
+      if (data.url) { window.location.href = data.url; }
+      else { alert('Something went wrong. Please try again.'); }
+    } catch { alert('Something went wrong. Please try again.'); }
     setLoading(null);
   };
 
   const isBasic = profile?.plan === 'basic';
   const isPremium = profile?.plan === 'premium';
   const isTrialActive = profile?.trial_ends_at && new Date() < new Date(profile.trial_ends_at) && !isBasic && !isPremium;
-  const isUpgrade = isBasic || isTrialActive;
+  const isUpgrade = (isBasic || isTrialActive || forceUpgrade) && !isExpired && !isPremium;
 
-  // If already Premium — nothing to show
-  if (!checkingAuth && isPremium) {
-    return (
-      <main style={{ minHeight: '100vh', background: 'var(--background)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center', padding: 40 }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>You're on Premium</h1>
-          <p style={{ color: 'var(--muted)', marginBottom: 24 }}>You already have full access to all AskMedily features.</p>
-          <a href="/dashboard" style={{ color: 'var(--brand)', fontWeight: 600, textDecoration: 'none' }}>← Back to dashboard</a>
-        </div>
-      </main>
-    );
-  }
+  // Loading state — but if upgrade param is set, skip the spinner
+  if (checkingAuth && !forceUpgrade) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 40, height: 40, border: '3px solid var(--brand-light)', borderTopColor: 'var(--brand)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+    </div>
+  );
+
+  // Already Premium
+  if (!checkingAuth && isPremium) return (
+    <main style={{ minHeight: '100vh', background: 'var(--background)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ textAlign: 'center', padding: 40 }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+        <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>You're on Premium</h1>
+        <p style={{ color: 'var(--muted)', marginBottom: 24 }}>You already have full access to all AskMedily features.</p>
+        <a href="/dashboard" style={{ color: 'var(--brand)', fontWeight: 600, textDecoration: 'none' }}>← Back to dashboard</a>
+      </div>
+    </main>
+  );
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--background)' }}>
@@ -100,8 +98,7 @@ export default function Pricing() {
           <ArrowLeft size={16} /> Back
         </a>
 
-        {/* Upgrade mode — Basic user upgrading to Premium */}
-        {isUpgrade && !isExpired ? (
+        {isUpgrade ? (
           <>
             <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 8 }}>Upgrade to Premium</h1>
             <p style={{ color: 'var(--muted)', marginBottom: 32 }}>Get full access to the AI Condition Agent, voice reading and more.</p>
@@ -125,10 +122,10 @@ export default function Pricing() {
               </ul>
               <button
                 onClick={() => handleSubscribe('premium')}
-                disabled={loading === 'premium' || checkingAuth}
+                disabled={loading === 'premium'}
                 style={{ width: '100%', textAlign: 'center', background: 'white', color: 'var(--brand)', padding: '13px', borderRadius: 10, border: 'none', fontWeight: 700, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: loading ? 0.7 : 1 }}
               >
-                {loading === 'premium' ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Processing...</> : 'Upgrade to Premium'}
+                {loading === 'premium' ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Processing...</> : 'Upgrade to Premium — £9.99/mo'}
               </button>
             </div>
           </>
@@ -143,25 +140,15 @@ export default function Pricing() {
                 🎉 2-day free trial on all plans
               </div>
             )}
-            {!checkingAuth && !user && (
+            {!user && (
               <div style={{ background: 'var(--brand-light)', borderRadius: 12, padding: '14px 20px', marginBottom: 24, fontSize: 14, color: 'var(--brand)' }}>
                 <a href="/login" style={{ color: 'var(--brand)', fontWeight: 700, textDecoration: 'none' }}>Sign in or create an account</a> to start your free trial
               </div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
               {[
-                {
-                  plan: 'basic' as const,
-                  name: 'Basic', price: '£4.99',
-                  features: ['Drug search & plain English pages', 'Side effects ranked by frequency', 'Photo search', 'Voice search', 'NHS & FDA sourced data'],
-                  highlight: false
-                },
-                {
-                  plan: 'premium' as const,
-                  name: 'Premium', price: '£9.99',
-                  features: ['Everything in Basic', 'AI Condition Agent', 'Voice agent (listen to drug info)', 'Personalised medication history', 'Priority support', 'Early access to new features'],
-                  highlight: true
-                }
+                { plan: 'basic' as const, name: 'Basic', price: '£4.99', features: ['Drug search & plain English pages', 'Side effects ranked by frequency', 'Photo search', 'Voice search', 'NHS & FDA sourced data'], highlight: false },
+                { plan: 'premium' as const, name: 'Premium', price: '£9.99', features: ['Everything in Basic', 'AI Condition Agent', 'Voice agent (listen to drug info)', 'Personalised medication history', 'Priority support', 'Early access to new features'], highlight: true }
               ].map((item) => (
                 <div key={item.plan} style={{ background: item.highlight ? 'var(--brand)' : 'white', color: item.highlight ? 'white' : 'var(--foreground)', borderRadius: 20, padding: 32, border: '1px solid var(--border)', textAlign: 'left', position: 'relative' }}>
                   {item.highlight && (
@@ -184,10 +171,10 @@ export default function Pricing() {
                   </ul>
                   <button
                     onClick={() => handleSubscribe(item.plan)}
-                    disabled={loading === item.plan || checkingAuth}
+                    disabled={loading === item.plan}
                     style={{ width: '100%', textAlign: 'center', background: item.highlight ? 'white' : 'var(--brand)', color: item.highlight ? 'var(--brand)' : 'white', padding: '13px', borderRadius: 10, border: 'none', fontWeight: 700, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: loading ? 0.7 : 1 }}
                   >
-                    {loading === item.plan ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Processing...</> : checkingAuth ? 'Loading...' : user ? (isExpired ? 'Subscribe now' : 'Start free trial') : 'Sign in to start'}
+                    {loading === item.plan ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Processing...</> : user ? (isExpired ? 'Subscribe now' : 'Start free trial') : 'Sign in to start'}
                   </button>
                 </div>
               ))}
