@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
         trial_period_days: 2,
         metadata: { userId: userId || '', plan },
       },
-      success_url: `${appUrl}/dashboard?success=true&plan=${plan}`,
+      success_url: `${appUrl}/login?success=true&plan=${plan}`,
       cancel_url: `${appUrl}/pricing?cancelled=true`,
       metadata: { userId: userId || '', plan },
     });
