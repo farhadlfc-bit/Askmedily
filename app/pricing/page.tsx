@@ -54,14 +54,12 @@ export default function Pricing() {
   const isTrialActive = profile?.trial_ends_at && new Date() < new Date(profile.trial_ends_at) && !isBasic && !isPremium;
   const isUpgrade = (isBasic || isTrialActive || forceUpgrade) && !isExpired && !isPremium;
 
-  // Loading state — but if upgrade param is set, skip the spinner
   if (checkingAuth && !forceUpgrade) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: 40, height: 40, border: '3px solid var(--brand-light)', borderTopColor: 'var(--brand)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
     </div>
   );
 
-  // Already Premium
   if (!checkingAuth && isPremium) return (
     <main style={{ minHeight: '100vh', background: 'var(--background)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ textAlign: 'center', padding: 40 }}>
@@ -101,7 +99,7 @@ export default function Pricing() {
         {isUpgrade ? (
           <>
             <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 8 }}>Upgrade to Premium</h1>
-            <p style={{ color: 'var(--muted)', marginBottom: 32 }}>Get full access to the AI Condition Agent, voice reading and more.</p>
+            <p style={{ color: 'var(--muted)', marginBottom: 32 }}>Get full access to voice reading, AI guidance, and your personal medication history.</p>
             <div style={{ background: 'var(--brand)', borderRadius: 20, padding: 32, textAlign: 'left', color: 'white', position: 'relative' }}>
               <div style={{ position: 'absolute', top: -12, right: 20, background: 'var(--accent)', color: 'white', padding: '4px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
                 Most Popular
@@ -113,7 +111,14 @@ export default function Pricing() {
               </div>
               <p style={{ fontSize: 12, opacity: 0.7, marginBottom: 24 }}>billed monthly, cancel anytime</p>
               <ul style={{ listStyle: 'none', marginBottom: 28, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {['Everything in Basic', 'AI Condition Agent', 'Voice agent (listen to drug info)', 'Personalised medication history', 'Priority support', 'Early access to new features'].map((f, i) => (
+                {[
+                  'Everything in Basic',
+                  'AI Condition Agent (personalised medication guidance)',
+                  'Voice agent — listen to drug information read aloud',
+                  'My Med History — personal medication log',
+                  'Priority support',
+                  'Early access to new features'
+                ].map((f, i) => (
                   <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14 }}>
                     <CheckCircle size={16} style={{ marginTop: 2, flexShrink: 0, color: 'white' }} />
                     {f}
@@ -147,8 +152,31 @@ export default function Pricing() {
             )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
               {[
-                { plan: 'basic' as const, name: 'Basic', price: '£4.99', features: ['Drug search & plain English pages', 'Side effects ranked by frequency', 'Photo search', 'Voice search', 'NHS & FDA sourced data'], highlight: false },
-                { plan: 'premium' as const, name: 'Premium', price: '£9.99', features: ['Everything in Basic', 'AI Condition Agent', 'Voice agent (listen to drug info)', 'Personalised medication history', 'Priority support', 'Early access to new features'], highlight: true }
+                {
+                  plan: 'basic' as const,
+                  name: 'Basic', price: '£4.99',
+                  features: [
+                    'Drug search & plain English pages',
+                    'Side effects ranked by frequency',
+                    'Photo search — identify meds from a photo',
+                    'Voice search — speak to search',
+                    'NHS & FDA sourced data'
+                  ],
+                  highlight: false
+                },
+                {
+                  plan: 'premium' as const,
+                  name: 'Premium', price: '£9.99',
+                  features: [
+                    'Everything in Basic',
+                    'AI Condition Agent — personalised medication guidance',
+                    'Voice agent — listen to drug info read aloud',
+                    'My Med History — personal medication log',
+                    'Priority support',
+                    'Early access to new features'
+                  ],
+                  highlight: true
+                }
               ].map((item) => (
                 <div key={item.plan} style={{ background: item.highlight ? 'var(--brand)' : 'white', color: item.highlight ? 'white' : 'var(--foreground)', borderRadius: 20, padding: 32, border: '1px solid var(--border)', textAlign: 'left', position: 'relative' }}>
                   {item.highlight && (
