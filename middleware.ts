@@ -1,11 +1,14 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-const protectedRoutes = ['/dashboard', '/drug', '/condition', '/pricing', '/settings'];
+const protectedRoutes = ['/dashboard', '/drug', '/condition', '/pricing', '/settings', '/med-history'];
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  const isProtected = protectedRoutes.some(route => path.startsWith(route));
 
+  // Allow auth routes to pass through freely
+  if (path.startsWith('/auth')) return NextResponse.next();
+
+  const isProtected = protectedRoutes.some(route => path.startsWith(route));
   if (!isProtected) return NextResponse.next();
 
   const sessionCookie = request.cookies.get('sb-hjllgaodcutlaqqievtn-auth-token');
