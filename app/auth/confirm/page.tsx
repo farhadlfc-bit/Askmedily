@@ -14,7 +14,6 @@ export default function AuthConfirm() {
         return;
       }
 
-      // Check if user has a plan already
       const { data: profile } = await supabase
         .from('profiles')
         .select('plan, trial_ends_at, created_at')
@@ -22,25 +21,28 @@ export default function AuthConfirm() {
         .single();
 
       if (!profile) {
-        // No profile yet — send to pricing
         window.location.href = '/pricing';
         return;
       }
 
       const isSubscribed = profile.plan === 'basic' || profile.plan === 'premium';
-      const trialActive = profile.trial_ends_at && new Date() < new Date(profile.trial_ends_at);
-      const isNewUser = !isSubscribed && !trialActive;
 
-      if (isNewUser) {
-        // New user — send to pricing
+      // Check if this is a brand new user (created in last 60 seconds)
+      const createdAt = new Date(profile.created_at);
+      const isNewUser = (Date.now() - createdAt.getTime()) < 60000;
+
+      if (isSubscribed) {
+        // Existing subscriber — go straight to dashboard
+        window.location.href = '/dashboard';
+      } else if (isNewUser) {
+        // New user — show pricing first
         window.location.href = '/pricing';
       } else {
-        // Existing subscriber — send to dashboard
+        // Returning user with active trial — go to dashboard
         window.location.href = '/dashboard';
       }
     };
 
-    // Small delay to ensure session is established
     setTimeout(check, 500);
   }, []);
 
