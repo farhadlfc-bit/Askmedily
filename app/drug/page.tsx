@@ -1,7 +1,7 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-import { Pill, AlertTriangle, CheckCircle, Info, ArrowLeft, Loader2, Volume2, Square } from 'lucide-react';
+import { Pill, AlertTriangle, Info, ArrowLeft, Loader2, Volume2, Square, Lock } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
 
 interface DrugInfo {
@@ -26,6 +26,7 @@ function DrugPageContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [authChecked, setAuthChecked] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioLoading, setAudioLoading] = useState(false);
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
@@ -34,12 +35,8 @@ function DrugPageContent() {
     const checkAuth = async () => {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        window.location.href = '/login';
-        return;
-      }
+      if (!session) { window.location.href = '/login'; return; }
 
-      // Check subscription status
       const { data: profile } = await supabase
         .from('profiles')
         .select('plan, trial_ends_at')
@@ -53,6 +50,7 @@ function DrugPageContent() {
           window.location.href = '/pricing?expired=true';
           return;
         }
+        setIsPremium(profile.plan === 'premium');
       }
 
       setAuthChecked(true);
@@ -61,9 +59,7 @@ function DrugPageContent() {
   }, []);
 
   useEffect(() => {
-    if (authChecked && query) {
-      fetchDrugInfo(query);
-    }
+    if (authChecked && query) fetchDrugInfo(query);
   }, [authChecked, query]);
 
   const fetchDrugInfo = async (drugName: string) => {
@@ -87,7 +83,13 @@ function DrugPageContent() {
   const handleListen = async () => {
     if (!drugInfo) return;
 
-    // Stop if already playing
+    if (!isPremium) {
+      if (confirm('Voice reading is a Premium feature — £9.99/month. Upgrade now?')) {
+        window.location.href = '/pricing?upgrade=true';
+      }
+      return;
+    }
+
     if (isPlaying && currentAudio) {
       currentAudio.pause();
       currentAudio.currentTime = 0;
@@ -96,17 +98,9 @@ function DrugPageContent() {
       return;
     }
 
-    // Check voice settings
-    const voiceEnabled = localStorage.getItem('askmedily_voice_enabled');
-    if (voiceEnabled === 'false') {
-      alert('Voice is disabled. Go to Settings to enable it.');
-      return;
-    }
-
     const voiceId = localStorage.getItem('askmedily_voice_id') || '21m00Tcm4TlvDq8ikWAM';
     const speed = parseFloat(localStorage.getItem('askmedily_reading_speed') || '1');
 
-    // Build the text to read
     const text = `
       ${drugInfo.name}. ${drugInfo.genericName ? `Also known as ${drugInfo.genericName}.` : ''}
       ${drugInfo.whatItDoes}
@@ -115,7 +109,7 @@ function DrugPageContent() {
       Important warnings: ${drugInfo.warnings?.join('. ')}.
       How to take it: ${drugInfo.dosageInfo}. ${drugInfo.takeWith}.
       If you miss a dose: ${drugInfo.missedDose}.
-      This information is for educational purposes only. Always consult your doctor or pharmacist before making any changes to your medication.
+      This information is for educational purposes only. Always consult your doctor or pharmacist.
     `.trim();
 
     setAudioLoading(true);
@@ -126,7 +120,6 @@ function DrugPageContent() {
         body: JSON.stringify({ text, voiceId })
       });
       const data = await res.json();
-
       if (data.audio) {
         const audio = new Audio(`data:audio/mpeg;base64,${data.audio}`);
         audio.playbackRate = speed;
@@ -202,18 +195,20 @@ function DrugPageContent() {
             disabled={audioLoading}
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              background: isPlaying ? '#FF4444' : 'var(--brand)',
-              color: 'white', border: 'none', borderRadius: 10,
-              padding: '10px 16px', fontSize: 14, fontWeight: 600,
-              cursor: 'pointer', flexShrink: 0,
-              opacity: audioLoading ? 0.7 : 1
+              background: isPlaying ? '#FF4444' : isPremium ? 'var(--brand)' : 'var(--background)',
+              color: isPremium ? 'white' : 'var(--muted)',
+              border: isPremium ? 'none' : '1px solid var(--border)',
+              borderRadius: 10, padding: '10px 16px', fontSize: 14, fontWeight: 600,
+              cursor: 'pointer', flexShrink: 0, opacity: audioLoading ? 0.7 : 1
             }}
           >
             {audioLoading
               ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Loading...</>
               : isPlaying
               ? <><Square size={16} /> Stop</>
-              : <><Volume2 size={16} /> Listen</>
+              : isPremium
+              ? <><Volume2 size={16} /> Listen</>
+              : <><Lock size={16} /> Premium</>
             }
           </button>
         </div>
@@ -289,12 +284,27 @@ function DrugPageContent() {
         </div>
       </div>
 
+      {/* Premium upsell for voice */}
+      {!isPremium && (
+        <div style={{ background: 'var(--brand-light)', borderRadius: 12, padding: '14px 20px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Volume2 size={18} color="var(--brand)" />
+            <p style={{ fontSize: 14, color: 'var(--brand)', fontWeight: 600 }}>Want this page read aloud? Upgrade to Premium.</p>
+          </div>
+          <a href="/pricing?upgrade=true" style={{ background: 'var(--brand)', color: 'white', padding: '7px 14px', borderRadius: 8, textDecoration: 'none', fontSize: 13, fontWeight: 700 }}>
+            Upgrade →
+          </a>
+        </div>
+      )}
+
       {/* Settings link */}
-      <div style={{ padding: 16, background: 'var(--background)', borderRadius: 10, border: '1px solid var(--border)', textAlign: 'center', marginBottom: 16 }}>
-        <p style={{ fontSize: 13, color: 'var(--muted)' }}>
-          Want to change the voice or reading speed? <a href="/settings" style={{ color: 'var(--brand)', fontWeight: 600, textDecoration: 'none' }}>Go to Settings →</a>
-        </p>
-      </div>
+      {isPremium && (
+        <div style={{ padding: 16, background: 'var(--background)', borderRadius: 10, border: '1px solid var(--border)', textAlign: 'center', marginBottom: 16 }}>
+          <p style={{ fontSize: 13, color: 'var(--muted)' }}>
+            Want to change the voice or reading speed? <a href="/settings" style={{ color: 'var(--brand)', fontWeight: 600, textDecoration: 'none' }}>Go to Settings →</a>
+          </p>
+        </div>
+      )}
 
       {/* Disclaimer */}
       <div style={{ padding: 16, background: 'var(--background)', borderRadius: 10, border: '1px solid var(--border)', textAlign: 'center' }}>
