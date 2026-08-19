@@ -7,13 +7,12 @@ export async function POST(req: NextRequest) {
   }
 
   const { userId, plan } = await req.json();
-
   if (!userId || !plan) {
     return NextResponse.json({ error: 'Missing userId or plan' }, { status: 400 });
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
   try {
     const res = await fetch(
@@ -21,8 +20,8 @@ export async function POST(req: NextRequest) {
       {
         method: 'PATCH',
         headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
+          'apikey': serviceRoleKey,
+          'Authorization': `Bearer ${serviceRoleKey}`,
           'Content-Type': 'application/json',
           'Prefer': 'return=minimal'
         },
