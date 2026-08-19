@@ -29,9 +29,25 @@ export default function LoginPage() {
       if (error) { setError(error.message); }
       else { setMessage('Check your email to confirm your account, then come back to sign in.'); }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) { setError(error.message); }
-      else { window.location.href = '/dashboard'; }
+     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+if (error) { setError(error.message); }
+else {
+  // Check if user needs to choose a plan
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('plan, trial_ends_at')
+    .eq('id', data.user.id)
+    .single();
+  
+  const isSubscribed = profile?.plan === 'basic' || profile?.plan === 'premium';
+  const trialActive = profile?.trial_ends_at && new Date() < new Date(profile.trial_ends_at);
+  
+  if (!isSubscribed && !trialActive) {
+    window.location.href = '/pricing';
+  } else {
+    window.location.href = '/dashboard';
+  }
+}
     }
     setLoading(false);
   };
