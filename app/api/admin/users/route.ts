@@ -7,15 +7,15 @@ export async function GET(req: NextRequest) {
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
   try {
     const res = await fetch(
       `${supabaseUrl}/rest/v1/profiles?select=*&order=created_at.desc`,
       {
         headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`
+          'apikey': serviceRoleKey,
+          'Authorization': `Bearer ${serviceRoleKey}`
         }
       }
     );
