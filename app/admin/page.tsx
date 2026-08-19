@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Pill, Users, TrendingUp, Search, Shield, LogOut, RefreshCw, Edit2, Check, X } from 'lucide-react';
 
-const ADMIN_API_KEY = 'askmedily-admin-2026';
+const ADMIN_PASSWORD = '079212055ZahrA';
 
 interface UserProfile {
   id: string;
@@ -38,7 +38,7 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const res = await fetch('/api/admin/users', {
-        headers: { 'x-admin-key': ADMIN_API_KEY }
+        headers: { 'x-admin-key': ADMIN_PASSWORD }
       });
       const data = await res.json();
       if (data.users) {
