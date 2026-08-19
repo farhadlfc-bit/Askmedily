@@ -205,3 +205,47 @@ export default function AdminDashboard() {
                               <option value="basic">Basic</option>
                               <option value="premium">Premium</option>
                               <option value="free">Free</option>
+                            </select>
+                          ) : (
+                            <span style={{ background: badge.bg, color: badge.color, padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>
+                              {badge.label}
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--muted)' }}>
+                          {user.trial_ends_at ? new Date(user.trial_ends_at).toLocaleDateString('en-GB') : '—'}
+                        </td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--muted)' }}>
+                          {user.created_at ? new Date(user.created_at).toLocaleDateString('en-GB') : '—'}
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          {editingUser === user.id ? (
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button onClick={() => updateUserPlan(user.id, editPlan)} disabled={saving} style={{ background: 'var(--accent)', color: 'white', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <Check size={12} /> Save
+                              </button>
+                              <button onClick={() => setEditingUser(null)} style={{ background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <X size={12} /> Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button onClick={() => { setEditingUser(user.id); setEditPlan(user.plan || 'trial'); }} style={{ background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
+                              <Edit2 size={12} /> Edit
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {filteredUsers.length === 0 && (
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>No users found</div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </main>
+  );
+}
