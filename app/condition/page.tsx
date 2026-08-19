@@ -1,7 +1,7 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-import { Brain, Send, ArrowLeft, Pill, Loader2, ChevronRight, AlertCircle, Heart, Activity, Stethoscope, Volume2, Square } from 'lucide-react';
+import { Brain, Send, ArrowLeft, Pill, Loader2, ChevronRight, AlertCircle, Heart, Activity, Stethoscope, Volume2, Square, Lock } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
 
 interface Message {
@@ -23,20 +23,20 @@ function ConditionPageContent() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioLoading, setAudioLoading] = useState(false);
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+  const [isPremium, setIsPremium] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        window.location.href = '/login';
-        return;
-      }
+      if (!session) { window.location.href = '/login'; return; }
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('plan, trial_ends_at')
         .eq('id', session.user.id)
         .single();
+
       if (profile) {
         const isSubscribed = profile.plan === 'basic' || profile.plan === 'premium';
         const trialActive = profile.trial_ends_at && new Date() < new Date(profile.trial_ends_at);
@@ -44,11 +44,12 @@ function ConditionPageContent() {
           window.location.href = '/pricing?expired=true';
           return;
         }
+        setIsPremium(profile.plan === 'premium');
       }
     };
     checkAuth();
   }, []);
-  
+
   useEffect(() => {
     if (query) {
       fetchConditionInfo(query);
@@ -150,6 +151,13 @@ Rules:
   const handleListen = async () => {
     if (!conditionInfo) return;
 
+    if (!isPremium) {
+      if (confirm('Voice reading is a Premium feature — £9.99/month. Upgrade now?')) {
+        window.location.href = '/pricing?upgrade=true';
+      }
+      return;
+    }
+
     if (isPlaying && currentAudio) {
       currentAudio.pause();
       currentAudio.currentTime = 0;
@@ -214,9 +222,10 @@ Rules:
                 disabled={audioLoading || loadingInfo}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
-                  background: isPlaying ? '#FF4444' : 'var(--brand)',
-                  color: 'white', border: 'none', borderRadius: 10,
-                  padding: '10px 16px', fontSize: 14, fontWeight: 600,
+                  background: isPlaying ? '#FF4444' : isPremium ? 'var(--brand)' : 'var(--background)',
+                  color: isPremium ? 'white' : 'var(--muted)',
+                  border: isPremium ? 'none' : '1px solid var(--border)',
+                  borderRadius: 10, padding: '10px 16px', fontSize: 14, fontWeight: 600,
                   cursor: 'pointer', flexShrink: 0,
                   opacity: (audioLoading || loadingInfo) ? 0.7 : 1
                 }}
@@ -225,7 +234,9 @@ Rules:
                   ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Loading...</>
                   : isPlaying
                   ? <><Square size={16} /> Stop</>
-                  : <><Volume2 size={16} /> Listen</>
+                  : isPremium
+                  ? <><Volume2 size={16} /> Listen</>
+                  : <><Lock size={16} /> Premium</>
                 }
               </button>
             </div>
@@ -242,6 +253,19 @@ Rules:
           </p>
         )}
       </div>
+
+      {/* Premium upsell for voice */}
+      {!isPremium && (
+        <div style={{ background: 'var(--brand-light)', borderRadius: 12, padding: '12px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Volume2 size={16} color="var(--brand)" />
+            <p style={{ fontSize: 13, color: 'var(--brand)', fontWeight: 600 }}>Want this page read aloud? Upgrade to Premium.</p>
+          </div>
+          <a href="/pricing?upgrade=true" style={{ background: 'var(--brand)', color: 'white', padding: '6px 14px', borderRadius: 8, textDecoration: 'none', fontSize: 13, fontWeight: 700 }}>
+            Upgrade →
+          </a>
+        </div>
+      )}
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 4, background: 'white', borderRadius: 12, padding: 4, marginBottom: 16, border: '1px solid var(--border)' }}>
