@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/lib/supabase';
-import { Pill, Search, LogOut, Loader2, X, Mic, MicOff, Camera } from 'lucide-react';
+import { Pill, Search, LogOut, Loader2, X, Mic, MicOff, Camera, ClipboardList } from 'lucide-react';
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
@@ -16,6 +16,7 @@ export default function Dashboard() {
   const [isListening, setIsListening] = useState(false);
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoError, setPhotoError] = useState('');
+  const [isPremium, setIsPremium] = useState(false);
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
@@ -31,6 +32,7 @@ export default function Dashboard() {
         .eq('id', session.user.id)
         .single();
       setProfile(profileData);
+      setIsPremium(profileData?.plan === 'premium');
       const dismissed = localStorage.getItem('trialBannerDismissed');
       if (!dismissed) setShowTrialBanner(true);
       setLoading(false);
@@ -134,29 +136,21 @@ export default function Dashboard() {
   const handlePhotoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setPhotoLoading(true);
     setPhotoError('');
-
     try {
-      // Convert to base64
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          resolve(result.split(',')[1]);
-        };
+        reader.onload = () => resolve((reader.result as string).split(',')[1]);
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
-
       const res = await fetch('/api/identify-medication', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: base64 })
       });
       const data = await res.json();
-
       if (data.found) {
         window.location.href = `/drug?q=${encodeURIComponent(data.name)}`;
       } else {
@@ -165,7 +159,6 @@ export default function Dashboard() {
     } catch {
       setPhotoError('Something went wrong. Please try again.');
     }
-
     setPhotoLoading(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -287,7 +280,6 @@ export default function Dashboard() {
 
         {/* Search row */}
         <div style={{ display: 'flex', gap: 8, alignItems: 'stretch', marginBottom: 12 }}>
-          {/* Text input */}
           <div style={{ position: 'relative', flex: 1, background: 'white', borderRadius: 14, border: '1px solid var(--border)', boxShadow: '0 4px 24px rgba(0,87,255,0.08)', display: 'flex', alignItems: 'center' }}>
             <Search size={18} style={{ position: 'absolute', left: 16, color: 'var(--muted)', flexShrink: 0 }} />
             <input
@@ -300,7 +292,6 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Search button */}
           <button onClick={handleSearch} disabled={searching} style={{
             background: 'var(--brand)', color: 'white', border: 'none', borderRadius: 14,
             padding: '0 24px', fontSize: 15, fontWeight: 700, cursor: 'pointer',
@@ -310,9 +301,8 @@ export default function Dashboard() {
             {searching ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Searching...</> : 'Search'}
           </button>
 
-          {/* Voice button */}
           <button onClick={handleVoiceInput} style={{
-            background: isListening ? '#FF4444' : 'white',
+            background: isListening ? '#EF4444' : 'white',
             border: '1px solid var(--border)', borderRadius: 14,
             padding: '0 16px', cursor: 'pointer',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
@@ -324,7 +314,6 @@ export default function Dashboard() {
             </span>
           </button>
 
-          {/* Photo button */}
           <button onClick={handlePhotoSearch} disabled={photoLoading} style={{
             background: photoLoading ? 'var(--brand-light)' : 'white',
             border: '1px solid var(--border)', borderRadius: 14,
@@ -332,35 +321,23 @@ export default function Dashboard() {
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
             minWidth: 80, transition: 'all 0.2s', opacity: photoLoading ? 0.7 : 1
           }}>
-            {photoLoading
-              ? <Loader2 size={18} color="var(--brand)" style={{ animation: 'spin 1s linear infinite' }} />
-              : <Camera size={18} color="var(--brand)" />
-            }
+            {photoLoading ? <Loader2 size={18} color="var(--brand)" style={{ animation: 'spin 1s linear infinite' }} /> : <Camera size={18} color="var(--brand)" />}
             <span style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>
               {photoLoading ? 'Scanning...' : 'Photo Search'}
             </span>
           </button>
 
-          {/* Hidden file input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handlePhotoSelected}
-            style={{ display: 'none' }}
-          />
+          <input ref={fileInputRef} type="file" accept="image/*" capture="environment"
+            onChange={handlePhotoSelected} style={{ display: 'none' }} />
         </div>
 
-        {/* Listening indicator */}
         {isListening && (
           <div style={{ background: '#FFF0F0', borderRadius: 10, padding: '10px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FF4444', animation: 'pulse-dot 1s infinite' }} />
-            <span style={{ fontSize: 14, color: '#FF4444', fontWeight: 600 }}>Listening... speak now</span>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF4444', animation: 'pulse-dot 1s infinite' }} />
+            <span style={{ fontSize: 14, color: '#EF4444', fontWeight: 600 }}>Listening... speak now</span>
           </div>
         )}
 
-        {/* Photo error */}
         {photoError && (
           <div style={{ background: '#FFF0F0', borderRadius: 10, padding: '10px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <span style={{ fontSize: 14, color: 'var(--danger)' }}>{photoError}</span>
@@ -370,7 +347,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Did you mean */}
         {suggestion && (
           <div style={{ background: 'var(--brand-light)', borderRadius: 10, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
             <span style={{ fontSize: 14, color: 'var(--brand)' }}>
@@ -387,7 +363,7 @@ export default function Dashboard() {
         )}
 
         {/* Popular */}
-        <div>
+        <div style={{ marginBottom: isPremium ? 20 : 0 }}>
           <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 10 }}>
             {mode === 'drug' ? 'Popular medications' : 'Common conditions'}
           </p>
@@ -402,6 +378,20 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
+
+        {/* Med History shortcut — Premium only */}
+        {isPremium && (
+          <a href="/med-history" style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'white', borderRadius: 14, padding: 20, border: '1px solid var(--border)', textDecoration: 'none', color: 'var(--foreground)', marginTop: 20 }}>
+            <div style={{ width: 44, height: 44, background: 'var(--brand-light)', borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <ClipboardList size={22} color="var(--brand)" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>My Med History</p>
+              <p style={{ fontSize: 13, color: 'var(--muted)' }}>Track your personal medication record</p>
+            </div>
+            <span style={{ fontSize: 13, color: 'var(--muted)' }}>→</span>
+          </a>
+        )}
       </div>
     </main>
   );
