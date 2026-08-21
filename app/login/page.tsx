@@ -39,16 +39,13 @@ export default function LoginPage() {
           .single();
 
         const isSubscribed = profile?.plan === 'basic' || profile?.plan === 'premium';
-        const createdAt = new Date(profile?.created_at);
-        const isNewUser = (Date.now() - createdAt.getTime()) < 300000;
+const hasChosenPlan = profile?.has_chosen_plan;
 
-        if (isSubscribed) {
-          window.location.href = '/dashboard';
-        } else if (isNewUser) {
-          window.location.href = '/pricing?new=true';
-        } else {
-          window.location.href = '/dashboard';
-        }
+if (isSubscribed || hasChosenPlan) {
+  window.location.href = '/dashboard';
+} else {
+  window.location.href = '/pricing?new=true';
+}
       }
     }
     setLoading(false);
