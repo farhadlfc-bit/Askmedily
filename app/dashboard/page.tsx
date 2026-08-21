@@ -203,7 +203,7 @@ export default function Dashboard() {
   return (
     <main style={{ minHeight: '100vh', background: 'var(--background)' }}>
       <nav style={{ background: 'white', borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 36, height: 36, background: 'var(--brand)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Pill size={20} color="white" />
           </div>
@@ -264,7 +264,6 @@ export default function Dashboard() {
           Search for a medication or a condition.
         </p>
 
-        {/* Mode Toggle */}
         <div style={{ display: 'flex', gap: 4, background: 'white', borderRadius: 12, padding: 4, marginBottom: 10, border: '1px solid var(--border)' }}>
           {(['drug', 'condition'] as const).map((m) => (
             <button key={m} onClick={() => { setMode(m); setSuggestion(null); }} style={{
@@ -278,7 +277,6 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Search row */}
         <div style={{ display: 'flex', gap: 8, alignItems: 'stretch', marginBottom: 12 }}>
           <div style={{ position: 'relative', flex: 1, background: 'white', borderRadius: 14, border: '1px solid var(--border)', boxShadow: '0 4px 24px rgba(0,87,255,0.08)', display: 'flex', alignItems: 'center' }}>
             <Search size={18} style={{ position: 'absolute', left: 16, color: 'var(--muted)', flexShrink: 0 }} />
@@ -327,7 +325,7 @@ export default function Dashboard() {
             </span>
           </button>
 
-          <input ref={fileInputRef} type="file" accept="image/*" capture="environment"
+          <input ref={fileInputRef} type="file" accept="image/*"
             onChange={handlePhotoSelected} style={{ display: 'none' }} />
         </div>
 
@@ -362,7 +360,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Popular */}
         <div style={{ marginBottom: isPremium ? 20 : 0 }}>
           <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 10 }}>
             {mode === 'drug' ? 'Popular medications' : 'Common conditions'}
@@ -379,7 +376,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Med History shortcut — Premium only */}
         {isPremium && (
           <a href="/med-history" style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'white', borderRadius: 14, padding: 20, border: '1px solid var(--border)', textDecoration: 'none', color: 'var(--foreground)', marginTop: 20 }}>
             <div style={{ width: 44, height: 44, background: 'var(--brand-light)', borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
