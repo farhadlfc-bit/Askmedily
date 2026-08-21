@@ -1,8 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Pill, Users, TrendingUp, Search, Shield, LogOut, RefreshCw, Edit2, Check, X } from 'lucide-react';
+import { Pill, Users, TrendingUp, Search, Shield, LogOut, RefreshCw, Edit2, Check, X, Trash2 } from 'lucide-react';
 
 const ADMIN_PASSWORD = '079212055ZahrA';
+const ADMIN_API_KEY = 'askmedily-admin-2026';
 
 interface UserProfile {
   id: string;
@@ -38,7 +39,7 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const res = await fetch('/api/admin/users', {
-        headers: { 'x-admin-key': ADMIN_PASSWORD }
+        headers: { 'x-admin-key': ADMIN_API_KEY }
       });
       const data = await res.json();
       if (data.users) {
@@ -65,17 +66,39 @@ export default function AdminDashboard() {
     try {
       const res = await fetch('/api/admin/update-user', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_PASSWORD },
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_API_KEY },
         body: JSON.stringify({ userId, plan })
       });
       const data = await res.json();
       if (data.success) {
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, plan } : u));
-        calculateStats(users.map(u => u.id === userId ? { ...u, plan } : u));
+        const updated = users.map(u => u.id === userId ? { ...u, plan } : u);
+        setUsers(updated);
+        calculateStats(updated);
       }
     } catch {}
     setSaving(false);
     setEditingUser(null);
+  };
+
+  const deleteUser = async (userId: string, email: string) => {
+    if (!confirm(`Delete user ${email}? This cannot be undone.`)) return;
+    try {
+      const res = await fetch('/api/admin/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_API_KEY },
+        body: JSON.stringify({ userId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const updated = users.filter(u => u.id !== userId);
+        setUsers(updated);
+        calculateStats(updated);
+      } else {
+        alert('Could not delete user. Please try again.');
+      }
+    } catch {
+      alert('Something went wrong.');
+    }
   };
 
   const filteredUsers = users.filter(u =>
@@ -106,8 +129,7 @@ export default function AdminDashboard() {
           </div>
           <div style={{ background: 'white', borderRadius: 20, padding: 28, border: '1px solid var(--border)' }}>
             <input
-              type="password"
-              value={password}
+              type="password" value={password}
               onChange={e => { setPassword(e.target.value); setPasswordError(''); }}
               onKeyDown={e => e.key === 'Enter' && handleLogin()}
               placeholder="Admin password"
@@ -146,7 +168,6 @@ export default function AdminDashboard() {
       </nav>
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
-
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 28 }}>
           {[
@@ -229,9 +250,14 @@ export default function AdminDashboard() {
                               </button>
                             </div>
                           ) : (
-                            <button onClick={() => { setEditingUser(user.id); setEditPlan(user.plan || 'trial'); }} style={{ background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
-                              <Edit2 size={12} /> Edit
-                            </button>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button onClick={() => { setEditingUser(user.id); setEditPlan(user.plan || 'trial'); }} style={{ background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
+                                <Edit2 size={12} /> Edit
+                              </button>
+                              <button onClick={() => deleteUser(user.id, user.email)} style={{ background: '#FFF0F0', border: '1px solid #FFD4D4', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--danger)' }}>
+                                <Trash2 size={12} /> Delete
+                              </button>
+                            </div>
                           )}
                         </td>
                       </tr>
