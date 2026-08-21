@@ -203,10 +203,12 @@ export default function Dashboard() {
   return (
     <main style={{ minHeight: '100vh', background: 'var(--background)' }}>
       <nav style={{ background: 'white', borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-       <a href="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src="/icon.png" alt="AskMedily" style={{ height: 44, width: 44, borderRadius: 10 }} />
-          <span style={{ fontWeight: 700, fontSize: 17, color: 'var(--foreground)' }}>AskMedily</span>
-        </a>
+       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 36, height: 36, background: 'var(--brand)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Pill size={20} color="white" />
+          </div>
+          <span style={{ fontWeight: 700, fontSize: 20 }}>AskMedily</span>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 13, color: 'var(--muted)' }}>{user?.email}</span>
           <a href="/settings" style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px', fontSize: 13, color: 'var(--muted)', textDecoration: 'none' }}>
