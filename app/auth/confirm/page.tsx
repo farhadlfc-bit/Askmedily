@@ -14,22 +14,17 @@ export default function AuthConfirm() {
       }
       const { data: profile } = await supabase
         .from('profiles')
-        .select('plan, trial_ends_at, created_at')
+        .select('plan, has_chosen_plan')
         .eq('id', session.user.id)
         .single();
-      if (!profile) {
-        window.location.href = '/pricing?new=true';
-        return;
-      }
-      const isSubscribed = profile.plan === 'basic' || profile.plan === 'premium';
-      const createdAt = new Date(profile.created_at);
-      const isNewUser = (Date.now() - createdAt.getTime()) < 60000;
-      if (isSubscribed) {
+
+      const isSubscribed = profile?.plan === 'basic' || profile?.plan === 'premium';
+      const hasChosenPlan = profile?.has_chosen_plan;
+
+      if (isSubscribed || hasChosenPlan) {
         window.location.href = '/dashboard';
-      } else if (isNewUser) {
-        window.location.href = '/pricing?new=true';
       } else {
-        window.location.href = '/dashboard';
+        window.location.href = '/pricing?new=true';
       }
     };
     setTimeout(check, 500);
