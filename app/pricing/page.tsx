@@ -23,10 +23,18 @@ export default function Pricing() {
       if (user) {
         const { data: profileData } = await supabase
           .from('profiles')
-          .select('plan, trial_ends_at')
+          .select('plan, trial_ends_at, has_chosen_plan')
           .eq('id', user.id)
           .single();
         setProfile(profileData);
+
+        // Mark that user has visited pricing
+        if (!profileData?.has_chosen_plan) {
+          await supabase
+            .from('profiles')
+            .update({ has_chosen_plan: true })
+            .eq('id', user.id);
+        }
       }
       setCheckingAuth(false);
     };
