@@ -202,9 +202,9 @@ export default function Dashboard() {
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--background)' }}>
-      <nav style={{ background: 'white', borderBottom: '1px solid var(--border)', padding: '10px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <nav style={{ background: 'white', borderBottom: '1px solid var(--border)', padding: '0px 0px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <a href="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src="/icon.png" alt="AskMedily" style={{ height: 200, width: 200, borderRadius: 10 }} />
+          <img src="/icon.png" alt="AskMedily" style={{ height: 90, width: 90, borderRadius: 10 }} />
           <span style={{ fontSize: 38, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1 }}>
             <span style={{ color: '#1a1a2e' }}>Ask</span><span style={{ color: '#0057FF' }}>Medily</span>
           </span>
