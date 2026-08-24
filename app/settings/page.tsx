@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase';
-import { Pill, ArrowLeft, Loader2, Play, Check } from 'lucide-react';
+import { ArrowLeft, Loader2, Play, Check } from 'lucide-react';
 
 const VOICE_OPTIONS = [
   { id: 'Xb7hH8MSUJpSbSDYk0k2', name: 'Alice', description: 'Clear, engaging British female' },
@@ -46,7 +46,6 @@ export default function Settings() {
       const premium = profileData?.plan === 'premium';
       setIsPremium(premium);
       if (premium) setActiveTab('voice');
-
       const savedVoice = localStorage.getItem('askmedily_voice_id');
       const savedVoiceEnabled = localStorage.getItem('askmedily_voice_enabled');
       const savedSpeed = localStorage.getItem('askmedily_reading_speed');
@@ -118,13 +117,13 @@ export default function Settings() {
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--background)' }}>
-      <nav style={{ background: 'white', borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 36, height: 36, background: 'var(--brand)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Pill size={20} color="white" />
-          </div>
-          <span style={{ fontWeight: 700, fontSize: 20 }}>AskMedily</span>
-        </div>
+      <nav style={{ background: 'white', borderBottom: '1px solid var(--border)', padding: '0px 32px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <a href="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="/icon.png" alt="AskMedily" style={{ height: 72, width: 72, borderRadius: 10 }} />
+          <span style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1 }}>
+            <span style={{ color: '#1a1a2e' }}>Ask</span><span style={{ color: '#0057FF' }}>Medily</span>
+          </span>
+        </a>
         <span style={{ fontSize: 13, color: 'var(--muted)' }}>{user?.email}</span>
       </nav>
 
@@ -148,7 +147,6 @@ export default function Settings() {
           ))}
         </div>
 
-        {/* Voice Tab — Premium only */}
         {activeTab === 'voice' && isPremium && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
@@ -222,7 +220,6 @@ export default function Settings() {
           </div>
         )}
 
-        {/* Account Tab */}
         {activeTab === 'account' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
@@ -266,7 +263,6 @@ export default function Settings() {
           </div>
         )}
 
-        {/* Subscription Tab */}
         {activeTab === 'subscription' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
@@ -279,20 +275,17 @@ export default function Settings() {
                     : 'Free Trial'}
                 </p>
               </div>
-
               {profile?.plan === 'basic' && (
                 <a href="/pricing?upgrade=true" style={{ display: 'block', textAlign: 'center', background: 'var(--brand)', color: 'white', padding: '13px', borderRadius: 10, textDecoration: 'none', fontWeight: 700, fontSize: 15, marginBottom: 12 }}>
                   Upgrade to Premium — £9.99/month
                 </a>
               )}
-
               {!isSubscribed() && (
                 <a href="/pricing" style={{ display: 'block', textAlign: 'center', background: 'var(--brand)', color: 'white', padding: '13px', borderRadius: 10, textDecoration: 'none', fontWeight: 700, fontSize: 15 }}>
                   Choose a plan
                 </a>
               )}
             </div>
-
             {isSubscribed() && (
               <div style={{ background: 'var(--background)', borderRadius: 16, padding: 24, border: '1px solid var(--border)' }}>
                 <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Manage subscription</h2>
