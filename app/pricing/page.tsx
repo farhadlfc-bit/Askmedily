@@ -55,7 +55,8 @@ export default function Pricing() {
   const isBasic = profile?.plan === 'basic';
   const isPremium = profile?.plan === 'premium';
   const isTrialActive = profile?.trial_ends_at && new Date() < new Date(profile.trial_ends_at) && !isBasic && !isPremium;
-  const isUpgrade = (isBasic || isTrialActive || forceUpgrade) && !isExpired && !isPremium;
+  const isNewUser = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('new') === 'true';
+const isUpgrade = (isBasic || forceUpgrade) && !isExpired && !isPremium && !isNewUser;
 
   if (checkingAuth && !forceUpgrade) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
