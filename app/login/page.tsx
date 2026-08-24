@@ -203,8 +203,11 @@ export default function LoginPage() {
             )}
           </div>
 
-          <p style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: 'var(--muted)', lineHeight: 1.6 }}>
+                    <p style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: 'var(--muted)', lineHeight: 1.6 }}>
             By signing up you agree to our <a href="/terms" style={{ color: 'var(--brand)', textDecoration: 'none' }}>Terms</a> and <a href="/privacy" style={{ color: 'var(--brand)', textDecoration: 'none' }}>Privacy Policy</a>
+          </p>
+          <p style={{ textAlign: 'center', marginTop: 8, fontSize: 11, color: 'var(--muted)' }}>
+            © {new Date().getFullYear()} AskMedily. All rights reserved.
           </p>
         </div>
       </div>
