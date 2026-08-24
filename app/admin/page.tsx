@@ -12,6 +12,8 @@ interface UserProfile {
   trial_ends_at: string;
   created_at: string;
   subscription_id: string;
+  date_of_birth: string;
+  has_chosen_plan: boolean;
 }
 
 export default function AdminDashboard() {
@@ -97,6 +99,16 @@ export default function AdminDashboard() {
     } catch { alert('Something went wrong.'); }
   };
 
+  const calculateAge = (dob: string) => {
+    if (!dob) return '—';
+    const birth = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return `${age}`;
+  };
+
   const filteredUsers = users.filter(u =>
     u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.plan?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -158,7 +170,7 @@ export default function AdminDashboard() {
         </div>
       </nav>
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 24px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 28 }}>
           {[
             { label: 'Total Users', value: stats.total, color: 'var(--brand)', icon: <Users size={20} color="var(--brand)" /> },
@@ -194,8 +206,8 @@ export default function AdminDashboard() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: 'var(--background)' }}>
-                    {['Email', 'Plan', 'Trial Ends', 'Joined', 'Actions'].map(h => (
-                      <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--muted)', borderBottom: '1px solid var(--border)' }}>{h}</th>
+                    {['Email', 'Plan', 'Age', 'DOB', 'Trial Ends', 'Joined', 'Chosen Plan', 'Actions'].map(h => (
+                      <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--muted)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -204,7 +216,7 @@ export default function AdminDashboard() {
                     const badge = getPlanBadge(user);
                     return (
                       <tr key={user.id} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'white' : 'var(--background)' }}>
-                        <td style={{ padding: '12px 16px', fontSize: 14 }}>{user.email}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 13 }}>{user.email}</td>
                         <td style={{ padding: '12px 16px' }}>
                           {editingUser === user.id ? (
                             <select value={editPlan} onChange={e => setEditPlan(e.target.value)} style={{ padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13 }}>
@@ -217,11 +229,20 @@ export default function AdminDashboard() {
                             <span style={{ background: badge.bg, color: badge.color, padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>{badge.label}</span>
                           )}
                         </td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--muted)' }}>{calculateAge(user.date_of_birth)}</td>
                         <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--muted)' }}>
+                          {user.date_of_birth ? new Date(user.date_of_birth).toLocaleDateString('en-GB') : '—'}
+                        </td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
                           {user.trial_ends_at ? new Date(user.trial_ends_at).toLocaleDateString('en-GB') : '—'}
                         </td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--muted)' }}>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
                           {user.created_at ? new Date(user.created_at).toLocaleDateString('en-GB') : '—'}
+                        </td>
+                        <td style={{ padding: '12px 16px', fontSize: 13 }}>
+                          <span style={{ color: user.has_chosen_plan ? '#00875A' : '#FF4444', fontWeight: 600 }}>
+                            {user.has_chosen_plan ? 'Yes' : 'No'}
+                          </span>
                         </td>
                         <td style={{ padding: '12px 16px' }}>
                           {editingUser === user.id ? (
