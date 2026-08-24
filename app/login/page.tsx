@@ -7,7 +7,6 @@ export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'signup'>('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [dob, setDob] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -16,51 +15,26 @@ export default function LoginPage() {
 
   const supabase = createClient();
 
-  const calculateAge = (dob: string) => {
-    const birth = new Date(dob);
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    const m = today.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-    return age;
-  };
-
   const handleAuth = async () => {
     if (!email || !password) { setError('Please fill in all fields'); return; }
-
-    if (mode === 'signup') {
-      if (!dob) { setError('Please enter your date of birth'); return; }
-      const age = calculateAge(dob);
-      if (age < 18) {
-        setError('Sorry, AskMedily is only available to users aged 18 and over.');
-        return;
-      }
-    }
-
     setLoading(true);
     setError('');
     setMessage('');
 
     if (mode === 'signup') {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email, password,
         options: { emailRedirectTo: `${window.location.origin}/auth/callback` }
       });
       if (error) { setError(error.message); }
-      else {
-        // Save DOB to profile
-        if (data.user) {
-          await supabase.from('profiles').update({ date_of_birth: dob }).eq('id', data.user.id);
-        }
-        setMessage('Check your email to confirm your account, then come back to sign in.');
-      }
+      else { setMessage('Check your email to confirm your account, then come back to sign in.'); }
     } else {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) { setError(error.message); }
       else {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('plan, trial_ends_at, has_chosen_plan')
+          .select('plan, has_chosen_plan')
           .eq('id', data.user.id)
           .single();
         const isSubscribed = profile?.plan === 'basic' || profile?.plan === 'premium';
@@ -68,7 +42,7 @@ export default function LoginPage() {
         if (isSubscribed || hasChosenPlan) {
           window.location.href = '/dashboard';
         } else {
-          window.location.href = '/pricing?new=true';
+          window.location.href = '/auth/confirm';
         }
       }
     }
@@ -163,29 +137,10 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
-
-              {mode === 'signup' && (
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', display: 'block', marginBottom: 6 }}>
-                    Date of birth <span style={{ fontWeight: 400, color: 'var(--muted)' }}>(must be 18 or over)</span>
-                  </label>
-                  <input type="date" value={dob} onChange={e => setDob(e.target.value)}
-                    max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
-                    style={{ width: '100%', padding: '12px 14px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 15, outline: 'none', background: 'var(--background)', boxSizing: 'border-box' }} />
-                </div>
-              )}
             </div>
 
-            {error && (
-              <div style={{ marginTop: 14, padding: '12px 14px', background: '#FFF0F0', borderRadius: 8, fontSize: 13, color: 'var(--danger)', lineHeight: 1.5 }}>
-                {error}
-              </div>
-            )}
-            {message && (
-              <div style={{ marginTop: 14, padding: '12px 14px', background: '#E8FBF5', borderRadius: 8, fontSize: 13, color: '#00875A', lineHeight: 1.5 }}>
-                {message}
-              </div>
-            )}
+            {error && <div style={{ marginTop: 14, padding: '10px 14px', background: '#FFF0F0', borderRadius: 8, fontSize: 13, color: 'var(--danger)' }}>{error}</div>}
+            {message && <div style={{ marginTop: 14, padding: '10px 14px', background: '#E8FBF5', borderRadius: 8, fontSize: 13, color: '#00875A' }}>{message}</div>}
 
             <button onClick={handleAuth} disabled={loading} style={{
               width: '100%', marginTop: 20, padding: '14px', background: 'var(--brand)',
@@ -203,7 +158,7 @@ export default function LoginPage() {
             )}
           </div>
 
-                    <p style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: 'var(--muted)', lineHeight: 1.6 }}>
+          <p style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: 'var(--muted)', lineHeight: 1.6 }}>
             By signing up you agree to our <a href="/terms" style={{ color: 'var(--brand)', textDecoration: 'none' }}>Terms</a> and <a href="/privacy" style={{ color: 'var(--brand)', textDecoration: 'none' }}>Privacy Policy</a>
           </p>
           <p style={{ textAlign: 'center', marginTop: 8, fontSize: 11, color: 'var(--muted)' }}>
