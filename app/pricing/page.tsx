@@ -1,5 +1,5 @@
 'use client';
-import { CheckCircle, Pill, ArrowLeft, Loader2 } from 'lucide-react';
+import { CheckCircle, ArrowLeft, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase';
 
@@ -27,13 +27,8 @@ export default function Pricing() {
           .eq('id', user.id)
           .single();
         setProfile(profileData);
-
-        // Mark that user has visited pricing
         if (!profileData?.has_chosen_plan) {
-          await supabase
-            .from('profiles')
-            .update({ has_chosen_plan: true })
-            .eq('id', user.id);
+          await supabase.from('profiles').update({ has_chosen_plan: true }).eq('id', user.id);
         }
       }
       setCheckingAuth(false);
@@ -60,8 +55,7 @@ export default function Pricing() {
   const isBasic = profile?.plan === 'basic';
   const isPremium = profile?.plan === 'premium';
   const isTrialActive = profile?.trial_ends_at && new Date() < new Date(profile.trial_ends_at) && !isBasic && !isPremium;
-  const isNewSignup = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('new') === 'true';
-const isUpgrade = (isBasic || forceUpgrade) && !isExpired && !isPremium && !isNewSignup;
+  const isUpgrade = (isBasic || isTrialActive || forceUpgrade) && !isExpired && !isPremium;
 
   if (checkingAuth && !forceUpgrade) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -82,21 +76,19 @@ const isUpgrade = (isBasic || forceUpgrade) && !isExpired && !isPremium && !isNe
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--background)' }}>
-      <nav style={{ background: 'white', borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 34, height: 34, background: 'var(--brand)', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Pill size={18} color="white" />
-          </div>
-          <span style={{ fontWeight: 700, fontSize: 18 }}>AskMedily</span>
-        </div>
+      <nav style={{ background: 'white', borderBottom: '1px solid var(--border)', padding: '0px 32px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <a href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="/icon.png" alt="AskMedily" style={{ height: 72, width: 72, borderRadius: 10 }} />
+          <span style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1 }}>
+            <span style={{ color: '#1a1a2e' }}>Ask</span><span style={{ color: '#0057FF' }}>Medily</span>
+          </span>
+        </a>
         {user && <span style={{ fontSize: 13, color: 'var(--muted)' }}>Signed in as {user.email}</span>}
       </nav>
 
       {isExpired && (
         <div style={{ background: '#FFF8F0', borderTop: '3px solid #FF9500', padding: '14px 32px', textAlign: 'center' }}>
-          <p style={{ fontSize: 15, color: '#FF9500', fontWeight: 600 }}>
-            ⏰ Your free trial has ended — choose a plan below to continue using AskMedily.
-          </p>
+          <p style={{ fontSize: 15, color: '#FF9500', fontWeight: 600 }}>⏰ Your free trial has ended — choose a plan below to continue using AskMedily.</p>
         </div>
       )}
 
@@ -110,9 +102,7 @@ const isUpgrade = (isBasic || forceUpgrade) && !isExpired && !isPremium && !isNe
             <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 8 }}>Upgrade to Premium</h1>
             <p style={{ color: 'var(--muted)', marginBottom: 32 }}>Get full access to voice reading, AI guidance, and your personal medication history.</p>
             <div style={{ background: 'var(--brand)', borderRadius: 20, padding: 32, textAlign: 'left', color: 'white', position: 'relative' }}>
-              <div style={{ position: 'absolute', top: -12, right: 20, background: 'var(--accent)', color: 'white', padding: '4px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
-                Most Popular
-              </div>
+              <div style={{ position: 'absolute', top: -12, right: 20, background: 'var(--accent)', color: 'white', padding: '4px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>Most Popular</div>
               <p style={{ fontSize: 14, fontWeight: 600, opacity: 0.8, marginBottom: 8 }}>Premium</p>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 6 }}>
                 <span style={{ fontSize: 40, fontWeight: 800 }}>£9.99</span>
@@ -120,25 +110,14 @@ const isUpgrade = (isBasic || forceUpgrade) && !isExpired && !isPremium && !isNe
               </div>
               <p style={{ fontSize: 12, opacity: 0.7, marginBottom: 24 }}>billed monthly, cancel anytime</p>
               <ul style={{ listStyle: 'none', marginBottom: 28, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {[
-                  'Everything in Basic',
-                  'AI Condition Agent (personalised medication guidance)',
-                  'Voice agent — listen to drug information read aloud',
-                  'My Med History — personal medication log',
-                  'Priority support',
-                  'Early access to new features'
-                ].map((f, i) => (
+                {['Everything in Basic', 'AI Condition Agent — personalised medication guidance', 'Voice agent — listen to drug info read aloud', 'My Med History — personal medication log', 'Priority support', 'Early access to new features'].map((f, i) => (
                   <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14 }}>
-                    <CheckCircle size={16} style={{ marginTop: 2, flexShrink: 0, color: 'white' }} />
-                    {f}
+                    <CheckCircle size={16} style={{ marginTop: 2, flexShrink: 0, color: 'white' }} />{f}
                   </li>
                 ))}
               </ul>
-              <button
-                onClick={() => handleSubscribe('premium')}
-                disabled={loading === 'premium'}
-                style={{ width: '100%', textAlign: 'center', background: 'white', color: 'var(--brand)', padding: '13px', borderRadius: 10, border: 'none', fontWeight: 700, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: loading ? 0.7 : 1 }}
-              >
+              <button onClick={() => handleSubscribe('premium')} disabled={loading === 'premium'}
+                style={{ width: '100%', textAlign: 'center', background: 'white', color: 'var(--brand)', padding: '13px', borderRadius: 10, border: 'none', fontWeight: 700, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: loading ? 0.7 : 1 }}>
                 {loading === 'premium' ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Processing...</> : 'Upgrade to Premium — £9.99/mo'}
               </button>
             </div>
@@ -161,36 +140,11 @@ const isUpgrade = (isBasic || forceUpgrade) && !isExpired && !isPremium && !isNe
             )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
               {[
-                {
-                  plan: 'basic' as const,
-                  name: 'Basic', price: '£4.99',
-                  features: [
-                    'Drug search & plain English pages',
-                    'Side effects ranked by frequency',
-                    'Photo search — identify meds from a photo',
-                    'Voice search — speak to search',
-                    'NHS & FDA sourced data'
-                  ],
-                  highlight: false
-                },
-                {
-                  plan: 'premium' as const,
-                  name: 'Premium', price: '£9.99',
-                  features: [
-                    'Everything in Basic',
-                    'AI Condition Agent — personalised medication guidance',
-                    'Voice agent — listen to drug info read aloud',
-                    'My Med History — personal medication log',
-                    'Priority support',
-                    'Early access to new features'
-                  ],
-                  highlight: true
-                }
+                { plan: 'basic' as const, name: 'Basic', price: '£4.99', features: ['Drug search & plain English pages', 'Side effects ranked by frequency', 'Photo search — identify meds from a photo', 'Voice search — speak to search', 'NHS & FDA sourced data'], highlight: false },
+                { plan: 'premium' as const, name: 'Premium', price: '£9.99', features: ['Everything in Basic', 'AI Condition Agent — personalised guidance', 'Voice agent — listen to drug info read aloud', 'My Med History — personal medication log', 'Priority support', 'Early access to new features'], highlight: true }
               ].map((item) => (
                 <div key={item.plan} style={{ background: item.highlight ? 'var(--brand)' : 'white', color: item.highlight ? 'white' : 'var(--foreground)', borderRadius: 20, padding: 32, border: '1px solid var(--border)', textAlign: 'left', position: 'relative' }}>
-                  {item.highlight && (
-                    <div style={{ position: 'absolute', top: -12, right: 20, background: 'var(--accent)', color: 'white', padding: '4px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>Most Popular</div>
-                  )}
+                  {item.highlight && <div style={{ position: 'absolute', top: -12, right: 20, background: 'var(--accent)', color: 'white', padding: '4px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>Most Popular</div>}
                   <p style={{ fontSize: 14, fontWeight: 600, opacity: 0.8, marginBottom: 8 }}>{item.name}</p>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 6 }}>
                     <span style={{ fontSize: 40, fontWeight: 800 }}>{item.price}</span>
@@ -201,16 +155,12 @@ const isUpgrade = (isBasic || forceUpgrade) && !isExpired && !isPremium && !isNe
                   <ul style={{ listStyle: 'none', marginBottom: 28, display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {item.features.map((f, j) => (
                       <li key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14 }}>
-                        <CheckCircle size={16} style={{ marginTop: 2, flexShrink: 0, color: item.highlight ? 'white' : 'var(--accent)' }} />
-                        {f}
+                        <CheckCircle size={16} style={{ marginTop: 2, flexShrink: 0, color: item.highlight ? 'white' : 'var(--accent)' }} />{f}
                       </li>
                     ))}
                   </ul>
-                  <button
-                    onClick={() => handleSubscribe(item.plan)}
-                    disabled={loading === item.plan}
-                    style={{ width: '100%', textAlign: 'center', background: item.highlight ? 'white' : 'var(--brand)', color: item.highlight ? 'var(--brand)' : 'white', padding: '13px', borderRadius: 10, border: 'none', fontWeight: 700, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: loading ? 0.7 : 1 }}
-                  >
+                  <button onClick={() => handleSubscribe(item.plan)} disabled={loading === item.plan}
+                    style={{ width: '100%', textAlign: 'center', background: item.highlight ? 'white' : 'var(--brand)', color: item.highlight ? 'var(--brand)' : 'white', padding: '13px', borderRadius: 10, border: 'none', fontWeight: 700, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: loading ? 0.7 : 1 }}>
                     {loading === item.plan ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Processing...</> : user ? (isExpired ? 'Subscribe now' : 'Start free trial') : 'Sign in to start'}
                   </button>
                 </div>
