@@ -8,14 +8,18 @@ export default function AuthConfirm() {
   const [dob, setDob] = useState('');
   const [dobError, setDobError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [session, setSession] = useState<any>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
     const check = async () => {
+      // Wait a moment for session to establish
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { window.location.href = '/login'; return; }
-      setSession(session);
+      
+      setUserId(session.user.id);
 
       const { data: profile } = await supabase
         .from('profiles')
@@ -23,7 +27,6 @@ export default function AuthConfirm() {
         .eq('id', session.user.id)
         .single();
 
-      // If no DOB — show DOB collection screen
       if (!profile?.date_of_birth) {
         setShowDob(true);
         return;
@@ -38,7 +41,7 @@ export default function AuthConfirm() {
         window.location.href = '/pricing?new=true';
       }
     };
-    setTimeout(check, 500);
+    check();
   }, []);
 
   const handleDobSubmit = async () => {
@@ -55,14 +58,26 @@ export default function AuthConfirm() {
       return;
     }
 
+    if (!userId) { setDobError('Session error. Please try signing in again.'); return; }
+
     setSaving(true);
     const supabase = createClient();
-    await supabase.from('profiles').update({ date_of_birth: dob }).eq('id', session.user.id);
+    
+    const { error } = await supabase
+      .from('profiles')
+      .update({ date_of_birth: dob })
+      .eq('id', userId);
+
+    if (error) {
+      setDobError('Could not save. Please try again.');
+      setSaving(false);
+      return;
+    }
 
     const { data: profile } = await supabase
       .from('profiles')
       .select('plan, has_chosen_plan')
-      .eq('id', session.user.id)
+      .eq('id', userId)
       .single();
 
     const isSubscribed = profile?.plan === 'basic' || profile?.plan === 'premium';
@@ -82,7 +97,7 @@ export default function AuthConfirm() {
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <img src="/icon.png" alt="AskMedily" style={{ height: 72, width: 72, borderRadius: 14, marginBottom: 12 }} />
           <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>One more thing</h1>
-          <p style={{ color: 'var(--muted)', fontSize: 15 }}>Please confirm your date of birth to continue. AskMedily is for users aged 18 and over.</p>
+          <p style={{ color: 'var(--muted)', fontSize: 15, lineHeight: 1.6 }}>Please confirm your date of birth to continue. AskMedily is for users aged 18 and over.</p>
         </div>
         <div style={{ background: 'white', borderRadius: 20, padding: 28, border: '1px solid var(--border)' }}>
           <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 8 }}>Date of birth</label>
