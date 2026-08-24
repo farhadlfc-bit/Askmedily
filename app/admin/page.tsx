@@ -1,6 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { Pill, Users, TrendingUp, Search, Shield, LogOut, RefreshCw, Edit2, Check, X, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { Users, TrendingUp, Search, Shield, LogOut, RefreshCw, Edit2, Check, X, Trash2 } from 'lucide-react';
 
 const ADMIN_PASSWORD = '079212055ZahrA';
 const ADMIN_API_KEY = 'askmedily-admin-2026';
@@ -93,12 +93,8 @@ export default function AdminDashboard() {
         const updated = users.filter(u => u.id !== userId);
         setUsers(updated);
         calculateStats(updated);
-      } else {
-        alert('Could not delete user. Please try again.');
-      }
-    } catch {
-      alert('Something went wrong.');
-    }
+      } else { alert('Could not delete user.'); }
+    } catch { alert('Something went wrong.'); }
   };
 
   const filteredUsers = users.filter(u =>
@@ -128,13 +124,11 @@ export default function AdminDashboard() {
             <p style={{ color: 'var(--muted)', fontSize: 14, marginTop: 4 }}>AskMedily Admin Dashboard</p>
           </div>
           <div style={{ background: 'white', borderRadius: 20, padding: 28, border: '1px solid var(--border)' }}>
-            <input
-              type="password" value={password}
+            <input type="password" value={password}
               onChange={e => { setPassword(e.target.value); setPasswordError(''); }}
               onKeyDown={e => e.key === 'Enter' && handleLogin()}
               placeholder="Admin password"
-              style={{ width: '100%', padding: '12px 14px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 15, outline: 'none', marginBottom: 12, boxSizing: 'border-box' }}
-            />
+              style={{ width: '100%', padding: '12px 14px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 15, outline: 'none', marginBottom: 12, boxSizing: 'border-box' }} />
             {passwordError && <p style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 12 }}>{passwordError}</p>}
             <button onClick={handleLogin} style={{ width: '100%', padding: '13px', background: 'var(--brand)', color: 'white', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
               Sign in
@@ -147,16 +141,13 @@ export default function AdminDashboard() {
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--background)' }}>
-      <nav style={{ background: 'white', borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 36, height: 36, background: 'var(--brand)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Pill size={20} color="white" />
-          </div>
-          <div>
-            <span style={{ fontWeight: 700, fontSize: 18 }}>AskMedily</span>
-            <span style={{ fontSize: 12, color: 'var(--muted)', marginLeft: 8, background: 'var(--background)', padding: '2px 8px', borderRadius: 10 }}>Admin</span>
-          </div>
-        </div>
+      <nav style={{ background: 'white', borderBottom: '1px solid var(--border)', padding: '0px 32px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <a href="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="/icon.png" alt="AskMedily" style={{ height: 72, width: 72, borderRadius: 10 }} />
+          <span style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1 }}>
+            <span style={{ color: '#1a1a2e' }}>Ask</span><span style={{ color: '#0057FF' }}>Medily</span>
+          </span>
+        </a>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={loadUsers} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', fontSize: 13, color: 'var(--muted)' }}>
             <RefreshCw size={14} /> Refresh
@@ -168,12 +159,11 @@ export default function AdminDashboard() {
       </nav>
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
-        {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 28 }}>
           {[
             { label: 'Total Users', value: stats.total, color: 'var(--brand)', icon: <Users size={20} color="var(--brand)" /> },
             { label: 'Active Trial', value: stats.trial, color: '#00875A', icon: <TrendingUp size={20} color="#00875A" /> },
-            { label: 'Basic', value: stats.basic, color: 'var(--brand)', icon: <Pill size={20} color="var(--brand)" /> },
+            { label: 'Basic', value: stats.basic, color: 'var(--brand)', icon: <Shield size={20} color="var(--brand)" /> },
             { label: 'Premium', value: stats.premium, color: '#7C3AED', icon: <Shield size={20} color="#7C3AED" /> },
             { label: 'Expired', value: stats.expired, color: '#FF4444', icon: <X size={20} color="#FF4444" /> },
             { label: 'Est. MRR', value: `£${monthlyRevenue}`, color: '#00875A', icon: <TrendingUp size={20} color="#00875A" /> },
@@ -186,18 +176,14 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Users table */}
         <div style={{ background: 'white', borderRadius: 16, border: '1px solid var(--border)', overflow: 'hidden' }}>
           <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
             <h2 style={{ fontSize: 17, fontWeight: 700 }}>Users ({filteredUsers.length})</h2>
             <div style={{ position: 'relative', flex: 1, maxWidth: 300 }}>
               <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
-              <input
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+              <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search by email or plan..."
-                style={{ width: '100%', padding: '8px 12px 8px 36px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, outline: 'none', background: 'var(--background)', boxSizing: 'border-box' }}
-              />
+                style={{ width: '100%', padding: '8px 12px 8px 36px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, outline: 'none', background: 'var(--background)', boxSizing: 'border-box' }} />
             </div>
           </div>
 
@@ -228,9 +214,7 @@ export default function AdminDashboard() {
                               <option value="free">Free</option>
                             </select>
                           ) : (
-                            <span style={{ background: badge.bg, color: badge.color, padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>
-                              {badge.label}
-                            </span>
+                            <span style={{ background: badge.bg, color: badge.color, padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>{badge.label}</span>
                           )}
                         </td>
                         <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--muted)' }}>
