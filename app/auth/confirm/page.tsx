@@ -18,11 +18,9 @@ export default function AuthConfirm() {
 
       if (!session) {
         if (attempts < 10) {
-          // Retry up to 10 times with 500ms delay
           await new Promise(resolve => setTimeout(resolve, 500));
           return check(attempts + 1);
         }
-        // Give up after 5 seconds
         window.location.href = '/login';
         return;
       }
@@ -67,15 +65,22 @@ export default function AuthConfirm() {
       return;
     }
 
-    if (!userId) { setDobError('Session error. Please try signing in again.'); return; }
-
     setSaving(true);
     const supabase = createClient();
+
+    // Re-fetch session if userId is missing
+    let id = userId;
+    if (!id) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setDobError('Session expired. Please sign in again.'); setSaving(false); return; }
+      id = session.user.id;
+      setUserId(id);
+    }
 
     const { error } = await supabase
       .from('profiles')
       .update({ date_of_birth: dob })
-      .eq('id', userId);
+      .eq('id', id);
 
     if (error) {
       setDobError('Could not save. Please try again.');
@@ -86,7 +91,7 @@ export default function AuthConfirm() {
     const { data: profile } = await supabase
       .from('profiles')
       .select('plan, has_chosen_plan')
-      .eq('id', userId)
+      .eq('id', id)
       .single();
 
     const isSubscribed = profile?.plan === 'basic' || profile?.plan === 'premium';
