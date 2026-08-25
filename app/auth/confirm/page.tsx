@@ -12,16 +12,20 @@ export default function AuthConfirm() {
 
   useEffect(() => {
     const supabase = createClient();
-    const check = async () => {
-      // Retry up to 5 times with 1 second gaps to wait for session cookie
-      let session = null;
-      for (let i = 0; i < 5; i++) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const { data } = await supabase.auth.getSession();
-        if (data.session) { session = data.session; break; }
-      }
 
-      if (!session) { window.location.href = '/login?confirmed=true'; return; }
+    const check = async (attempts = 0): Promise<void> => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        if (attempts < 10) {
+          // Retry up to 10 times with 500ms delay
+          await new Promise(resolve => setTimeout(resolve, 500));
+          return check(attempts + 1);
+        }
+        // Give up after 5 seconds
+        window.location.href = '/login';
+        return;
+      }
 
       setUserId(session.user.id);
 
@@ -45,6 +49,7 @@ export default function AuthConfirm() {
         window.location.href = '/pricing?new=true';
       }
     };
+
     check();
   }, []);
 
@@ -129,7 +134,7 @@ export default function AuthConfirm() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
       <Loader2 size={32} color="var(--brand)" style={{ animation: 'spin 1s linear infinite' }} />
-      <p style={{ color: 'var(--muted)', fontSize: 15 }}>Confirming your email...</p>
+      <p style={{ color: 'var(--muted)', fontSize: 15 }}>Setting up your account...</p>
     </div>
   );
 }
