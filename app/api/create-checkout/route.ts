@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://askmedily-hazel.vercel.app';
+ const appUrl = 'https://www.askmedily.com';
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
         trial_period_days: 2,
         metadata: { userId: userId || '', plan },
       },
-      success_url: `${appUrl}/login?success=true&plan=${plan}`,
+      success_url: `${appUrl}/auth/confirm`,
       cancel_url: `${appUrl}/pricing?cancelled=true`,
       metadata: { userId: userId || '', plan },
     });
